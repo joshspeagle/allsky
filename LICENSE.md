@@ -1,5 +1,7 @@
 The MIT License (MIT)
 
+Copyright (c) 2019 Josh Speagle, Catherine Zucker, and Ana Bonaca
+
 Copyright (c) 2014 Cameron Beccario
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
