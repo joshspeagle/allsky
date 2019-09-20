@@ -1,23 +1,23 @@
 {
-    "name": "earth",
-    "description": "Earth",
+    "name": "allsky",
+    "description": "All-sky visualization of the Galaxy",
     "version": "0.0.1",
     "private": true,
     "author": {
-        "name": "Cameron Beccario",
-        "email": "cambecc@nullschool.net"
+        "name": "Josh Speagle",
+        "email": "jspeagle@cfa.harvard.edu"
     },
-    "homepage": "https://github.com/cambecc/earth",
+    "homepage": "https://github.com/joshspeagle/allsky",
     "repository": {
         "type": "git",
-        "url": "git://github.com/cambecc/earth.git"
+        "url": "git://github.com/joshspeagle/allsky.git"
     },
     "engine": "node >= 0.10.21",
     "dependencies": {
         "when": "2.6.0",
         "swig": "1.2.2",
         "mkdirp": "0.3.5",
-        "express": "3.4.4"
+        "express": ">=3.11.0"
     },
     "devDependencies": {
         "grunt": "~0.4.1",
