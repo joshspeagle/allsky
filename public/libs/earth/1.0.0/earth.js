@@ -222,10 +222,10 @@
             var lakesHi = topojson.feature(topo, µ.isMobile() ? o.lakes_110m : o.lakes_50m);
             log.timeEnd("building meshes");
             return {
-                coastLo: coastLo,
-                coastHi: coastHi,
-                lakesLo: lakesLo,
-                lakesHi: lakesHi
+//                 coastLo: coastLo,
+//                 coastHi: coastHi,
+//                 lakesLo: lakesLo,
+//                 lakesHi: lakesHi
             };
         });
     }
