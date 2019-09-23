@@ -14,7 +14,9 @@ var globes = function() {
      *          which user may reject, there is not much available except timezone. Better than nothing.
      */
     function currentPosition() {
-        var λ = µ.floorMod(new Date().getTimezoneOffset() / 4, 360);  // 24 hours * 60 min / 4 === 360 degrees
+//         var λ = µ.floorMod(new Date().getTimezoneOffset() / 4, 360);  // 24 hours * 60 min / 4 === 360 degrees
+        // deemphasize panstarrs footprint
+        var λ = 230
         return [λ, 0];
     }
 
@@ -205,7 +207,8 @@ var globes = function() {
     function atlantis() {
         return newGlobe({
             newProjection: function() {
-                return d3.geo.mollweide().rotate([30, -45, 90]).precision(0.1);
+//                 return d3.geo.mollweide().rotate([30, -45, 90]).precision(0.1);
+                return d3.geo.mollweide().rotate([210, 0, 0]).precision(0.1);
             }
         });
     }
