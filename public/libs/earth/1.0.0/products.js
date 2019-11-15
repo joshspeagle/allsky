@@ -132,10 +132,7 @@ var products = function() {
                         }
                     },
                     units: [
-                        {label: "km/h", conversion: function(x) { return x * 3.6; },      precision: 0},
-                        {label: "m/s",  conversion: function(x) { return x; },            precision: 1},
-                        {label: "kn",   conversion: function(x) { return x * 1.943844; }, precision: 0},
-                        {label: "mph",  conversion: function(x) { return x * 2.236936; }, precision: 0}
+                        {label: "mas/yr", conversion: function(x) { return x; },      precision: 2}
                     ],
                     scale: {
                         bounds: [0, 100],
@@ -171,9 +168,7 @@ var products = function() {
                         }
                     },
                     units: [
-                        {label: "°C", conversion: function(x) { return x - 273.15; },       precision: 1},
-                        {label: "°F", conversion: function(x) { return x * 9/5 - 459.67; }, precision: 1},
-                        {label: "K",  conversion: function(x) { return x; },                precision: 1}
+                        {label: "stars", conversion: function(x) { return x; },       precision: 0}
                     ],
                     scale: {
                         bounds: [193, 328],
@@ -208,19 +203,17 @@ var products = function() {
                     paths: [gfs1p0degPath(attr, "relative_humidity", attr.surface, attr.level)],
                     date: gfsDate(attr),
                     builder: function(file) {
-                        var vars = file.variables;
-                        var rh = vars.Relative_humidity_isobaric || vars.Relative_humidity_height_above_ground;
-                        var data = rh.data;
+                        var record = file[0], data = record.data;
                         return {
-                            header: netcdfHeader(vars.time, vars.lat, vars.lon, file.Originating_or_generating_Center),
+                            header: record.header,
                             interpolate: bilinearInterpolateScalar,
                             data: function(i) {
                                 return data[i];
                             }
-                        };
+                        }
                     },
                     units: [
-                        {label: "%", conversion: function(x) { return x; }, precision: 0}
+                        {label: "[Fe/H]", conversion: function(x) { return x; },       precision: 2}
                     ],
                     scale: {
                         bounds: [0, 100],
@@ -245,18 +238,17 @@ var products = function() {
                     paths: [gfs1p0degPath(attr, "air_density", attr.surface, attr.level)],
                     date: gfsDate(attr),
                     builder: function(file) {
-                        var vars = file.variables;
-                        var air_density = vars.air_density, data = air_density.data;
+                        var record = file[0], data = record.data;
                         return {
-                            header: netcdfHeader(vars.time, vars.lat, vars.lon, file.Originating_or_generating_Center),
+                            header: record.header,
                             interpolate: bilinearInterpolateScalar,
                             data: function(i) {
                                 return data[i];
                             }
-                        };
+                        }
                     },
                     units: [
-                        {label: "kg/m³", conversion: function(x) { return x; }, precision: 2}
+                        {label: "Gyr", conversion: function(x) { return x; },       precision: 1}
                     ],
                     scale: {
                         bounds: [0, 1.5],

@@ -1062,14 +1062,18 @@
             d3.select("#ocean-mode-enable").classed("highlighted", param === "ocean");
         });
 
+/*
         // Add logic to disable buttons that are incompatible with each other.
         configuration.on("change:overlayType", function(x, ot) {
             d3.select("#surface-level").classed("disabled", ot === "air_density" || ot === "wind_power_density");
         });
+*/
+/*
         configuration.on("change:surface", function(x, s) {
             d3.select("#overlay-air_density").classed("disabled", s === "surface");
             d3.select("#overlay-wind_power_density").classed("disabled", s === "surface");
         });
+*/
 
         // Add event handlers for the time navigation buttons.
         d3.select("#nav-backward-more").on("click", navigate.bind(null, -10));
