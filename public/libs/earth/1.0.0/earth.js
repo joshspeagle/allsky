@@ -17,7 +17,7 @@
     var MIN_MOVE = 4;                         // slack before a drag operation beings (pixels)
     var MOVE_END_WAIT = 1000;                 // time to wait for a move operation to be considered done (millis)
 
-    var OVERLAY_ALPHA = Math.floor(0.4*255);  // overlay transparency (on scale [0, 255])
+    var OVERLAY_ALPHA = Math.floor(0.75*255);  // overlay transparency (on scale [0, 255])
     var INTENSITY_SCALE_STEP = 10;            // step size of particle intensity color scale
     var MAX_PARTICLE_AGE = 100;               // max number of frames a particle is drawn before regeneration
     var PARTICLE_LINE_WIDTH = 1.0;            // line width of a drawn particle
@@ -578,8 +578,8 @@
                     particle.age = MAX_PARTICLE_AGE;  // particle has escaped the grid, never to return...
                 }
                 else {
-                    var xt = x + v[0];
-                    var yt = y + v[1];
+                    var xt = x + 0.4 * Math.sign(v[0]) * Math.pow(Math.abs(v[0]), 0.7);
+                    var yt = y + 0.4 * Math.sign(v[1]) * Math.pow(Math.abs(v[1]), 0.7);
                     if (field.isDefined(xt, yt)) {
                         // Path from (x,y) to (xt,yt) is visible, so add this particle to the appropriate draw bucket.
                         particle.xt = xt;
