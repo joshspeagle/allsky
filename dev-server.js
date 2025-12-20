@@ -28,7 +28,18 @@ function cacheControl() {
     };
 }
 
-var port = process.argv[2] || 3000;
+var portArg = process.argv[2];
+var DEFAULT_PORT = 3000;
+var port = DEFAULT_PORT;
+
+if (portArg !== undefined) {
+    var parsedPort = parseInt(portArg, 10);
+    if (!isNaN(parsedPort) && parsedPort >= 1 && parsedPort <= 65535) {
+        port = parsedPort;
+    } else {
+        console.warn("Invalid port specified (" + portArg + "). Falling back to default port " + DEFAULT_PORT + ".");
+    }
+}
 var app = express();
 
 app.use(cacheControl());
