@@ -14,8 +14,6 @@
 
 var fs = require("fs");
 var path = require("path");
-var when = require("when");
-var guard = require('when/guard');
 
 /**
  * Recursively walks a directory, invoking onFile for each file found.
@@ -27,36 +25,40 @@ var guard = require('when/guard');
  *               can return true to skip walking the contents of the directory.
  */
 function walk(dir, onFile) {
-    var d = when.defer();
-    var pending = 1;
+    return new Promise(function(resolve) {
+        var pending = 1;
 
-    function visit(dir, name) {
-        var file = path.join(dir, name);
-        fs.stat(file, function(err, stats) {
-            var abort = onFile(err, file, name, dir, stats);
-            if (!abort && stats && stats.isDirectory()) {
-                return expand(file);
-            }
-            if (!--pending) {
-                d.resolve();
-            }
-        });
-    }
-
-    function expand(dir) {
-        fs.readdir(dir, function(err, names) {
-            pending += names.length;
-            names.forEach(function(name) {
-                visit(dir, name);
+        function visit(dir, name) {
+            var file = path.join(dir, name);
+            fs.stat(file, function(err, stats) {
+                var abort = onFile(err, file, name, dir, stats);
+                if (!abort && stats && stats.isDirectory()) {
+                    return expand(file);
+                }
+                if (!--pending) {
+                    resolve();
+                }
             });
-            if (!--pending) {
-                d.resolve();
-            }
-        });
-    }
+        }
 
-    expand(dir);
-    return d.promise;
+        function expand(dir) {
+            fs.readdir(dir, function(err, names) {
+                if (err || !names) {
+                    if (!--pending) resolve();
+                    return;
+                }
+                pending += names.length;
+                names.forEach(function(name) {
+                    visit(dir, name);
+                });
+                if (!--pending) {
+                    resolve();
+                }
+            });
+        }
+
+        expand(dir);
+    });
 }
 
 var inspections = [];
@@ -64,26 +66,26 @@ var existingChars = {};
 var uniqueChars = {};
 
 function inspect(target, file) {
-    var d = when.defer();
-    fs.readFile(file, {encoding: "utf8"}, function(err, data) {
-        if (err) {
-            return console.error(err);
-        }
-        for (var i = 0; i < data.length; i++) {
-            // UNDONE: support for surrogate pairs
-            var c = data.charAt(i);
-            target[c] = true;
-        }
-        d.resolve();
+    return new Promise(function(resolve) {
+        fs.readFile(file, {encoding: "utf8"}, function(err, data) {
+            if (err) {
+                console.error(err);
+                return resolve();
+            }
+            for (var i = 0; i < data.length; i++) {
+                // UNDONE: support for surrogate pairs
+                var c = data.charAt(i);
+                target[c] = true;
+            }
+            resolve();
+        });
     });
-    return d.promise;
 }
-
-var inspectUnique_throttled = guard(guard.n(5), inspect.bind(null, uniqueChars));
 
 function onFile(err, file, name, dir, stats) {
     if (err) {
-        return console.error(err);
+        console.error(err);
+        return false;
     }
     if (name.substr(0, 1) === ".") {
         return true;  // ignore hidden directories and files
@@ -98,13 +100,14 @@ function onFile(err, file, name, dir, stats) {
         return true;  // ignore the data directory
     }
     if (stats.isFile() && /\.(js|json|txt|html|css|md)$/.test(name)) {
-        inspections.push(when(file).then(inspectUnique_throttled));
+        inspections.push(inspect(uniqueChars, file));
     }
+    return false;
 }
 
 inspect(existingChars, "characters.txt").then(function() {
     return walk("public", onFile).then(function() {
-        return when.all(inspections).then(function() {
+        return Promise.all(inspections).then(function() {
             var n = 0, keys = Object.keys(uniqueChars);
             keys.sort();
             for (var i = 0; i < keys.length; i++) {
@@ -117,4 +120,4 @@ inspect(existingChars, "characters.txt").then(function() {
             console.log("\nFound " + n + " new chars.");
         });
     });
-}).otherwise(console.error);
+}).catch(console.error);
