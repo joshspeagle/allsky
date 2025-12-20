@@ -32,7 +32,7 @@ function walk(dir, onFile) {
             var file = path.join(dir, name);
             fs.stat(file, function(err, stats) {
                 var abort = onFile(err, file, name, dir, stats);
-                if (!abort && stats && stats.isDirectory()) {
+                if (!err && !abort && stats && stats.isDirectory()) {
                     return expand(file);
                 }
                 if (!--pending) {
