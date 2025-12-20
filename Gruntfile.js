@@ -8,7 +8,8 @@ module.exports = function(grunt) {
         jshint: {
             files: ["*.js"],
             options: {
-                esversion: 6,
+                // Use ES5 syntax; ES6 globals like Promise are allowed via `globals`.
+                esversion: 5,
                 globals: {
                     Buffer: false,
                     console: false,
