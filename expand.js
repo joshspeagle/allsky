@@ -1,7 +1,7 @@
 /**
  * expand - expands templates with internationalized strings. The resulting HTML files are written to disk.
  *
- * This utility builds the Japanese and English versions of the HTML files. The templates are written using Swig,
+ * This utility builds the Japanese and English versions of the HTML files. The templates are written using Nunjucks,
  * and roughly follows the methodology described at http://ejohn.org/blog/a-strategy-for-i18n-and-node/
  *
  * English files are placed in the root: public/
@@ -16,7 +16,7 @@
 
 var fs = require("fs");
 var path = require("path");
-var swig = require("swig");
+var nunjucks = require("nunjucks");
 var mkdirp = require("mkdirp");
 var dictionary = require("./public/templates/il8n.json");
 
@@ -32,6 +32,9 @@ var languages = [
     {code: "ja", target: "public/jp"}  // *lang* code for Japanese is JA not JP. Too late now. Site already public.
 ];
 
+// Configure nunjucks environment
+var env = nunjucks.configure(templateDir, { autoescape: true });
+
 function newContext(languageCode) {
     return {
         __: function(s) {
@@ -44,13 +47,15 @@ function newContext(languageCode) {
     };
 }
 
+// Add __ as a global function for nunjucks templates
 templates.forEach(function(file) {
-    var template = swig.compileFile(path.join(templateDir, file));
-
     languages.forEach(function(language) {
-
         var context = newContext(language.code);
-        var result = template(context);
+
+        // Add the translation function to context
+        env.addGlobal('__', context.__);
+
+        var result = env.render(file, context);
 
         mkdirp.sync(language.target);
         fs.writeFileSync(path.join(language.target, file), result);

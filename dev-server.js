@@ -7,7 +7,9 @@
 console.log("============================================================");
 console.log(new Date().toISOString() + " - Starting");
 
-var util = require("util");
+var express = require("express");
+var compression = require("compression");
+var morgan = require("morgan");
 
 /**
  * Returns true if the response should be compressed.
@@ -26,28 +28,23 @@ function cacheControl() {
     };
 }
 
-function logger() {
-    express.logger.token("date", function() {
-        return new Date().toISOString();
-    });
-    express.logger.token("response-all", function(req, res) {
-        return (res._header ? res._header : "").trim();
-    });
-    express.logger.token("request-all", function(req, res) {
-        return util.inspect(req.headers);
-    });
-    return express.logger(
-        ':date - info: :remote-addr :req[cf-connecting-ip] :req[cf-ipcountry] :method :url HTTP/:http-version ' +
-        '":user-agent" :referrer :req[cf-ray] :req[accept-encoding]\\n:request-all\\n\\n:response-all\\n');
-}
+var portArg = process.argv[2];
+var DEFAULT_PORT = 3000;
+var port = DEFAULT_PORT;
 
-var port = process.argv[2];
-var express = require("express");
+if (portArg !== undefined) {
+    var parsedPort = parseInt(portArg, 10);
+    if (!isNaN(parsedPort) && parsedPort >= 1 && parsedPort <= 65535) {
+        port = parsedPort;
+    } else {
+        console.warn("Invalid port specified (" + portArg + "). Falling back to default port " + DEFAULT_PORT + ".");
+    }
+}
 var app = express();
 
 app.use(cacheControl());
-app.use(express.compress({filter: compressionFilter}));
-app.use(logger());
+app.use(compression({filter: compressionFilter}));
+app.use(morgan('combined'));
 app.use(express.static("public"));
 
 app.listen(port);
