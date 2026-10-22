@@ -25,7 +25,8 @@ module.exports = [
                 µ: "writable", globes: "writable", products: "writable"
             }
         },
-        // Each file defines one global (µ, globes, products) that the files after it read.
+        // Each file defines one global (µ, globes, products) that the files after it read. These two rule options
+        // go when the files become ES modules (#19, step 5).
         rules: { "no-redeclare": ["error", { builtinGlobals: false }], "no-unused-vars": ["error", { vars: "local" }] }
     }
 ];

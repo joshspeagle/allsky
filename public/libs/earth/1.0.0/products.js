@@ -42,7 +42,6 @@ var products = function() {
             matches: _.matches({param: "wind"}),
             create: function(attr) {
                 return buildProduct({
-                    field: "vector",
                     type: "wind",
                     paths: [gfs1p0degPath(attr, "wind", attr.surface, attr.level)],
                     builder: function(file) {
@@ -81,7 +80,6 @@ var products = function() {
             matches: _.matches({param: "wind", overlayType: "temp"}),
             create: function(attr) {
                 return buildProduct({
-                    field: "scalar",
                     type: "temp",
                     paths: [gfs1p0degPath(attr, "temp", attr.surface, attr.level)],
                     builder: function(file) {
@@ -130,7 +128,6 @@ var products = function() {
             matches: _.matches({param: "wind", overlayType: "relative_humidity"}),
             create: function(attr) {
                 return buildProduct({
-                    field: "scalar",
                     type: "relative_humidity",
                     paths: [gfs1p0degPath(attr, "relative_humidity", attr.surface, attr.level)],
                     builder: function(file) {
@@ -179,7 +176,6 @@ var products = function() {
             matches: _.matches({param: "wind", overlayType: "air_density"}),
             create: function(attr) {
                 return buildProduct({
-                    field: "scalar",
                     type: "air_density",
                     paths: [gfs1p0degPath(attr, "air_density", attr.surface, attr.level)],
                     builder: function(file) {

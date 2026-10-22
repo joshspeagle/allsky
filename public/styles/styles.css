@@ -37,10 +37,6 @@ a, .text-button {
     color: #e2b42e;
 }
 
-.text-button.disabled {
-    color: #444444;
-}
-
 a:hover, a:focus, .no-touch .text-button:hover, .no-touch .text-button:focus, .text-button:active {
     color: #ffffff;
     cursor: pointer;

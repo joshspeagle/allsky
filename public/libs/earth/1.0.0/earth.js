@@ -1,5 +1,5 @@
 /**
- * earth - a project to visualize global air data.
+ * earth - the page wiring, field interpolation, particle animation and overlay of allsky.
  *
  * Copyright (c) 2014 Cameron Beccario
  * The MIT License - http://opensource.org/licenses/MIT
@@ -73,7 +73,7 @@
         µ.buildConfiguration(globes, products.overlayTypes);  // holds the page's current configuration settings
     var inputController = buildInputController();             // interprets drag/zoom operations
     var globeAgent = newAgent();     // the model of the globe
-    var gridAgent = newAgent();      // the grid of weather data
+    var gridAgent = newAgent();      // the data grids of the current layer
     var rendererAgent = newAgent();  // the globe SVG renderer
     var fieldAgent = newAgent();     // the interpolated wind vector field
     var animatorAgent = newAgent();  // the wind animator
@@ -739,7 +739,6 @@
     function bindButtonToConfiguration(elementId, newAttr, keys) {
         keys = keys || _.keys(newAttr);
         d3.select(elementId).on("click", function() {
-            if (d3.select(elementId).classed("disabled")) return;
             configuration.save(newAttr);
         });
         configuration.on("change", function(model) {
