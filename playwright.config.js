@@ -11,7 +11,7 @@ module.exports = defineConfig({
     reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
     snapshotPathTemplate: "{testDir}/snapshots/{arg}{ext}",
     expect: {
-        toHaveScreenshot: { maxDiffPixelRatio: 0.001 }
+        toHaveScreenshot: { maxDiffPixelRatio: 0.001, stylePath: "tests/screenshot.css" }
     },
     use: {
         baseURL: `http://localhost:${PORT}`,

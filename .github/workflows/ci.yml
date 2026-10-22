@@ -12,16 +12,13 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # The image's Playwright version must match @playwright/test in package.json.
+    container: mcr.microsoft.com/playwright:v1.56.1-noble
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
       - run: npm ci
       - run: npm run lint
-      - run: npx playwright install --with-deps chromium
       - run: npm test
       - uses: actions/upload-artifact@v4
         if: failure()

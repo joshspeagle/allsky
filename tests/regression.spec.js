@@ -3,49 +3,39 @@
 // Regression tests: they record what the map shows today, so that refactoring can be checked against it.
 // Update the snapshots (npx playwright test --update-snapshots) only for an output change the lead approved.
 
-const { test, expect } = require("@playwright/test");
 const fs = require("fs");
-const { openMap, waitForStableOverlay, hideNondeterministicLayers, readoutAt, hashOf } = require("./helpers");
+const { test, expect, openMap, overlayDraws, waitForOverlayDraw, readoutAt, hashOf } = require("./helpers");
 
-// Menu button ids and hash segments, by distance bin.
+// The names the page uses for each distance bin, overlay and projection: the hash segment and the menu button id.
+const PREFIX = "current/wind";
 const BINS = {
-    "0-2": "isobaric/250hPa",
-    "1-3": "isobaric/1000hPa",
-    "2-4": "isobaric/850hPa",
-    "3-6": "isobaric/700hPa",
-    "5-8": "isobaric/500hPa",
-    "7-11": "surface/level",
-    "10-15": "isobaric/70hPa",
-    "13-25": "isobaric/20hPa",
-    "20-50": "isobaric/10hPa"
+    "0-2": { hash: "isobaric/250hPa", id: "isobaric-250hPa" },
+    "1-3": { hash: "isobaric/1000hPa", id: "isobaric-1000hPa" },
+    "2-4": { hash: "isobaric/850hPa", id: "isobaric-850hPa" },
+    "3-6": { hash: "isobaric/700hPa", id: "isobaric-700hPa" },
+    "5-8": { hash: "isobaric/500hPa", id: "isobaric-500hPa" },
+    "7-11": { hash: "surface/level", id: "surface-level" },
+    "10-15": { hash: "isobaric/70hPa", id: "isobaric-70hPa" },
+    "13-25": { hash: "isobaric/20hPa", id: "isobaric-20hPa" },
+    "20-50": { hash: "isobaric/10hPa", id: "isobaric-10hPa" }
 };
-const OVERLAYS = { velocity: "default", density: "temp", metallicity: "relative_humidity", age: "air_density" };
+const OVERLAYS = {
+    none: { hash: "overlay=off", id: "overlay-off" },
+    velocity: { hash: null, id: "overlay-wind" },
+    density: { hash: "overlay=temp", id: "overlay-temp" },
+    metallicity: { hash: "overlay=relative_humidity", id: "overlay-relative_humidity" },
+    age: { hash: "overlay=air_density", id: "overlay-air_density" }
+};
 const PROJECTIONS = [
     "atlantis", "azimuthal_equidistant", "conic_equidistant", "equirectangular",
     "orthographic", "stereographic", "waterman", "winkel3"
 ];
 const DEFAULT_PROJECTION = "atlantis";
+const GRID = { hash: "grid=on", id: "option-show-grid" };
 
 function hashFor(bin, overlay, projection) {
-    const ol = OVERLAYS[overlay] === "default" ? [] : ["overlay=" + (OVERLAYS[overlay] || overlay)];
-    return ["current/wind", BINS[bin]].concat(ol, [projection || DEFAULT_PROJECTION]).join("/");
-}
-
-/**
- * Returns the golden value stored under the given snapshot name. Writes it first when it is missing or when
- * snapshots are being updated.
- */
-function readOrWriteGolden(name, actual) {
-    const file = test.info().snapshotPath(name);
-    if (test.info().config.updateSnapshots === "all" || !fs.existsSync(file)) {
-        fs.writeFileSync(file, JSON.stringify(actual) + "\n");
-    }
-    return JSON.parse(fs.readFileSync(file, "utf8"));
-}
-
-function expectWithin(actual, expected, tolerance) {
-    expect(actual.length).toBe(expected.length);
-    actual.flat().forEach((x, i) => expect(Math.abs(x - expected.flat()[i])).toBeLessThanOrEqual(tolerance));
+    return [PREFIX, BINS[bin].hash, OVERLAYS[overlay].hash, projection || DEFAULT_PROJECTION]
+        .filter(Boolean).join("/");
 }
 
 // Pixels in the 960x600 view that land on observed sky, on masked sky and off the sphere, in the default view.
@@ -55,8 +45,8 @@ test.describe("map pixels", () => {
     const cases = [
         ["default view", ""],
         ["velocity 0-2 kpc", hashFor("0-2", "velocity")],
-        ["no overlay", hashFor("5-8", "off")],
-        ["grid points", hashFor("5-8", "density") + "/grid=on"],
+        ["no overlay", hashFor("5-8", "none")],
+        ["grid points", hashFor("5-8", "density") + "/" + GRID.hash],
         ["zoomed orthographic", hashFor("3-6", "age", "orthographic=40.00,-20.00,600")]
     ];
     for (const overlay of ["density", "metallicity", "age"]) {
@@ -68,10 +58,8 @@ test.describe("map pixels", () => {
 
     for (const [name, hash] of cases) {
         test(`${name} matches its snapshot`, async ({ page }) => {
-            const errors = await openMap(page, hash);
-            await hideNondeterministicLayers(page);
+            await openMap(page, hash);
             await expect(page).toHaveScreenshot(name.replace(/ /g, "-") + ".png");
-            expect(errors).toEqual([]);
         });
     }
 });
@@ -79,7 +67,7 @@ test.describe("map pixels", () => {
 test.describe("colour bars", () => {
     // The bar's width depends on whether the web font had loaded at start-up, so compare its colours at fixed
     // fractions of its width, with a tolerance of one pixel's change in colour.
-    for (const overlay of Object.keys(OVERLAYS)) {
+    for (const overlay of ["velocity", "density", "metallicity", "age"]) {
         test(`${overlay} colour bar matches its snapshot`, async ({ page }) => {
             await openMap(page, hashFor("5-8", overlay));
             const profile = await page.evaluate(() => {
@@ -88,26 +76,41 @@ test.describe("colour bars", () => {
                 const samples = [];
                 for (let k = 0; k <= 64; k++) {
                     const i = 4 * Math.round(k / 64 * (c.width - 1));
-                    samples.push([row[i], row[i + 1], row[i + 2]]);
+                    samples.push(row[i], row[i + 1], row[i + 2]);
                 }
                 return samples;
             });
-            expectWithin(profile, readOrWriteGolden(`scale-${overlay}.json`, profile), 6);
+            const expected = golden(`scale-${overlay}.json`, profile);
+            expect(profile.length).toBe(expected.length);
+            expect(Math.max(...profile.map((x, i) => Math.abs(x - expected[i])))).toBeLessThanOrEqual(6);
         });
     }
 });
+
+/**
+ * Returns the stored value of a snapshot that is compared with a tolerance. Writes the actual value when
+ * snapshots are being updated, and fails when the snapshot is missing.
+ */
+function golden(name, actual) {
+    const file = test.info().snapshotPath(name);
+    const update = test.info().config.updateSnapshots;
+    if (update === "all" || update === "changed" || (update === "missing" && !fs.existsSync(file))) {
+        fs.writeFileSync(file, JSON.stringify(actual) + "\n");
+    }
+    expect(fs.existsSync(file), `snapshot ${name} exists`).toBe(true);
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+}
 
 test.describe("location readouts", () => {
     for (const bin of Object.keys(BINS)) {
         for (const overlay of ["density", "metallicity", "age"]) {
             test(`${overlay} ${bin} kpc readouts match their snapshot`, async ({ page }) => {
-                const errors = await openMap(page, hashFor(bin, overlay));
+                await openMap(page, hashFor(bin, overlay));
                 const readouts = [];
                 for (const [x, y] of PROBES) {
                     readouts.push([x, y, await readoutAt(page, x, y)]);
                 }
                 expect(JSON.stringify(readouts, null, 1)).toMatchSnapshot(`readouts-${overlay}-${bin}.json`);
-                expect(errors).toEqual([]);
             });
         }
     }
@@ -129,7 +132,7 @@ test.describe("URL hash", () => {
 
     for (const hash of [
         hashFor("0-2", "density", "orthographic=12.50,-30.00,450"),
-        hashFor("20-50", "off", "winkel3") + "/grid=on",
+        hashFor("20-50", "none", "winkel3") + "/" + GRID.hash,
         hashFor("13-25", "velocity", "stereographic")
     ]) {
         test(`loading ${hash} keeps the hash`, async ({ page }) => {
@@ -141,13 +144,11 @@ test.describe("URL hash", () => {
     test("menu buttons write the expected hashes", async ({ page }) => {
         await openMap(page, hashFor("5-8", "velocity"));
         await page.click("#show-menu");
-        const ids = Object.values(BINS).map(b => "#" + b.replace("/", "-"))
-            .concat(["#overlay-off", "#overlay-wind", "#overlay-temp", "#overlay-relative_humidity",
-                "#overlay-air_density"])
-            .concat(PROJECTIONS.map(p => "#" + p), ["#option-show-grid", "#option-show-grid"]);
+        const ids = Object.values(BINS).concat(Object.values(OVERLAYS)).map(b => b.id)
+            .concat(PROJECTIONS, [GRID.id, GRID.id]);
         const hashes = [];
         for (const id of ids) {
-            await page.click(id);
+            await page.click("#" + id);
             hashes.push([id, await hashOf(page)]);
         }
         expect(JSON.stringify(hashes, null, 1)).toMatchSnapshot("menu-hashes.json");
@@ -156,15 +157,14 @@ test.describe("URL hash", () => {
     test("the active buttons are highlighted", async ({ page }) => {
         await openMap(page, hashFor("2-4", "metallicity", "winkel3"));
         const highlighted = await page.$$eval(".highlighted", els => els.map(e => e.id).sort());
-        expect(highlighted).toEqual(["isobaric-850hPa", "overlay-relative_humidity", "winkel3"]);
+        expect(highlighted).toEqual([BINS["2-4"].id, OVERLAYS.metallicity.id, "winkel3"].sort());
     });
 
     test("an edited hash redraws the map", async ({ page }) => {
         await openMap(page, hashFor("5-8", "density"));
+        const draws = await overlayDraws(page);
         await page.evaluate(h => { window.location.hash = h; }, hashFor("5-8", "age"));
-        await page.waitForFunction(() => document.querySelector("#overlay-air_density.highlighted"));
-        await waitForStableOverlay(page);
-        await hideNondeterministicLayers(page);
+        await waitForOverlayDraw(page, draws);
         await expect(page).toHaveScreenshot("age-5-8-kpc.png");
     });
 });

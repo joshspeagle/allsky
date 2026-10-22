@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const base = require("@playwright/test");
 
 const LIBS = path.join(__dirname, "..", "public", "libs");
 
@@ -10,50 +11,43 @@ const LIBS = path.join(__dirname, "..", "public", "libs");
 const CDN = /^https?:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/([^/]+)\/([^/]+)\/([^/]+?)(-min|\.min)?\.js$/;
 
 /**
+ * The page fixture serves only local files, and fails the test if the page logs an error or throws.
+ */
+const test = base.test.extend({
+    page: async ({ page }, use) => {
+        const errors = [];
+        page.on("pageerror", e => errors.push(e.message));
+        page.on("console", m => { if (m.type() === "error") errors.push(m.text()); });
+        await page.route(/^https?:\/\/(?!localhost)/, route => {
+            const m = CDN.exec(route.request().url());
+            const file = m && path.join(LIBS, m[1], m[2], m[3] + ".js");
+            return file && fs.existsSync(file) ? route.fulfill({ path: file }) : route.abort();
+        });
+        await use(page);
+        base.expect(errors).toEqual([]);
+    }
+});
+
+/**
+ * Returns the number of overlays the page has drawn (see drawOverlay in earth.js).
+ */
+function overlayDraws(page) {
+    return page.evaluate(() => +(document.documentElement.dataset.overlayDraws || 0));
+}
+
+/**
+ * Waits until the page has drawn more than the given number of overlays.
+ */
+function waitForOverlayDraw(page, after) {
+    return page.waitForFunction(n => +(document.documentElement.dataset.overlayDraws || 0) > n, after);
+}
+
+/**
  * Opens the map at the given hash and waits until the field is interpolated and the overlay is drawn.
- * Returns the list of page errors and console errors seen so far, which grows while the page stays open.
  */
 async function openMap(page, hash) {
-    const errors = [];
-    page.on("pageerror", e => errors.push(e.message));
-    page.on("console", m => { if (m.type() === "error") errors.push(m.text()); });
-
-    await page.route(/^https?:\/\/(?!localhost)/, route => {
-        const m = CDN.exec(route.request().url());
-        const file = m && path.join(LIBS, m[1], m[2], m[3] + ".js");
-        return file && fs.existsSync(file) ?
-            route.fulfill({ path: file, contentType: "application/javascript" }) :
-            route.abort();
-    });
-
-    const animating = page.waitForEvent("console", m => m.text().startsWith("particle count"));
     await page.goto("/" + (hash ? "#" + hash : ""));
-    await animating;
-    await waitForStableOverlay(page);
-    return errors;
-}
-
-/**
- * Waits until the overlay canvas stops changing. The overlay is drawn in the event turn after the animation starts.
- */
-async function waitForStableOverlay(page) {
-    await page.evaluate(() => { window.__overlayChecks = []; });
-    await page.waitForFunction(() => {
-        const c = document.getElementById("overlay");
-        const data = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
-        let sum = 0;
-        for (let i = 0; i < data.length; i += 97) sum = (sum + data[i] * (i % 1009)) % 1e9;
-        const w = window.__overlayChecks;
-        w.push(sum);
-        return w.length >= 3 && w[w.length - 1] === w[w.length - 2] && w[w.length - 2] === w[w.length - 3];
-    }, null, { polling: 100 });
-}
-
-/**
- * Hides the layers that are not deterministic (the particle animation) or not part of the map (the menu and text).
- */
-async function hideNondeterministicLayers(page) {
-    await page.addStyleTag({ content: "#animation, #details { visibility: hidden !important; }" });
+    await waitForOverlayDraw(page, 0);
 }
 
 /**
@@ -78,4 +72,4 @@ function hashOf(page) {
     return page.evaluate(() => window.location.hash.substr(1));
 }
 
-module.exports = { openMap, waitForStableOverlay, hideNondeterministicLayers, readoutAt, hashOf };
+module.exports = { test, expect: base.expect, openMap, overlayDraws, waitForOverlayDraw, readoutAt, hashOf };

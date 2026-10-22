@@ -1,98 +1,98 @@
 [
  [
-  "#isobaric-250hPa",
+  "isobaric-250hPa",
   "current/wind/isobaric/250hPa/atlantis"
  ],
  [
-  "#isobaric-1000hPa",
+  "isobaric-1000hPa",
   "current/wind/isobaric/1000hPa/atlantis"
  ],
  [
-  "#isobaric-850hPa",
+  "isobaric-850hPa",
   "current/wind/isobaric/850hPa/atlantis"
  ],
  [
-  "#isobaric-700hPa",
+  "isobaric-700hPa",
   "current/wind/isobaric/700hPa/atlantis"
  ],
  [
-  "#isobaric-500hPa",
+  "isobaric-500hPa",
   "current/wind/isobaric/500hPa/atlantis"
  ],
  [
-  "#surface-level",
+  "surface-level",
   "current/wind/surface/level/atlantis"
  ],
  [
-  "#isobaric-70hPa",
+  "isobaric-70hPa",
   "current/wind/isobaric/70hPa/atlantis"
  ],
  [
-  "#isobaric-20hPa",
+  "isobaric-20hPa",
   "current/wind/isobaric/20hPa/atlantis"
  ],
  [
-  "#isobaric-10hPa",
+  "isobaric-10hPa",
   "current/wind/isobaric/10hPa/atlantis"
  ],
  [
-  "#overlay-off",
+  "overlay-off",
   "current/wind/isobaric/10hPa/overlay=off/atlantis"
  ],
  [
-  "#overlay-wind",
+  "overlay-wind",
   "current/wind/isobaric/10hPa/atlantis"
  ],
  [
-  "#overlay-temp",
+  "overlay-temp",
   "current/wind/isobaric/10hPa/overlay=temp/atlantis"
  ],
  [
-  "#overlay-relative_humidity",
+  "overlay-relative_humidity",
   "current/wind/isobaric/10hPa/overlay=relative_humidity/atlantis"
  ],
  [
-  "#overlay-air_density",
+  "overlay-air_density",
   "current/wind/isobaric/10hPa/overlay=air_density/atlantis"
  ],
  [
-  "#atlantis",
+  "atlantis",
   "current/wind/isobaric/10hPa/overlay=air_density/atlantis"
  ],
  [
-  "#azimuthal_equidistant",
+  "azimuthal_equidistant",
   "current/wind/isobaric/10hPa/overlay=air_density/azimuthal_equidistant"
  ],
  [
-  "#conic_equidistant",
+  "conic_equidistant",
   "current/wind/isobaric/10hPa/overlay=air_density/conic_equidistant"
  ],
  [
-  "#equirectangular",
+  "equirectangular",
   "current/wind/isobaric/10hPa/overlay=air_density/equirectangular"
  ],
  [
-  "#orthographic",
+  "orthographic",
   "current/wind/isobaric/10hPa/overlay=air_density/orthographic"
  ],
  [
-  "#stereographic",
+  "stereographic",
   "current/wind/isobaric/10hPa/overlay=air_density/stereographic"
  ],
  [
-  "#waterman",
+  "waterman",
   "current/wind/isobaric/10hPa/overlay=air_density/waterman"
  ],
  [
-  "#winkel3",
+  "winkel3",
   "current/wind/isobaric/10hPa/overlay=air_density/winkel3"
  ],
  [
-  "#option-show-grid",
+  "option-show-grid",
   "current/wind/isobaric/10hPa/overlay=air_density/winkel3/grid=on"
  ],
  [
-  "#option-show-grid",
+  "option-show-grid",
   "current/wind/isobaric/10hPa/overlay=air_density/winkel3"
  ]
 ]

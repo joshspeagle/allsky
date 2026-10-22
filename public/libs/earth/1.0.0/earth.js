@@ -690,6 +690,11 @@
                 colorBar.attr("title", µ.formatScalar(value, units) + " " + units.label);
             });
         }
+
+        // Count completed draws of a field's overlay. The tests wait on this; keep it.
+        if (overlayType) {
+            document.documentElement.dataset.overlayDraws = +(document.documentElement.dataset.overlayDraws || 0) + 1;
+        }
     }
 
     /**
