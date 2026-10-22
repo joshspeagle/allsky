@@ -197,3 +197,13 @@ test("wheel, double-click and drag write the expected orientations", async ({ pa
     await record();
     expect(JSON.stringify(hashes.slice(1), null, 1)).toMatchSnapshot("move-hashes.json");
 });
+
+test("particle brightness saturates at the 95th percentile of the grid's speeds", async ({ page }) => {
+    await openMap(page, hashFor("5-8kpc", "velocity"));
+    const maxIntensity = await page.evaluate(async () => {
+        const {productsFor} = await import("./js/products.js");
+        const [velocity] = productsFor({bin: "5-8kpc", overlay: "velocity"});
+        return (await velocity.load(new AbortController().signal)).particles.maxIntensity;
+    });
+    expect(maxIntensity).toBeCloseTo(172.6, 0);
+});

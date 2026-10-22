@@ -7,7 +7,7 @@
  * https://github.com/cambecc/earth
  */
 
-import {floorMod, isValue, loadJson, segmentedColorScale} from "./util.js";
+import {floorMod, isValue, loadJson, quantile, segmentedColorScale} from "./util.js";
 
 /**
  * The distance bins, as their names in the data paths and the URL.
@@ -32,7 +32,9 @@ const LAYERS = {
                 [250, [255,255,204]]
             ])
         },
-        particles: {velocityScale: 1 / 60000, maxIntensity: 17}
+        // Particles move velocityScale * (view height) pixels per frame for 1 km/s. Their colour is brightest at
+        // the speed that 95% of the grid's cells do not exceed (set when the grid loads).
+        particles: {velocityScale: 1 / 60000, brightestQuantile: 0.95}
     },
     density: {
         units: {label: "stars", precision: 0},
@@ -224,11 +226,14 @@ function newProduct(type, attr) {
                 return null;
             }
             const header = records[0].header;
-            const grid = type === "velocity" ?
-                buildGrid(header, i => records[0].data[i] === null ? null : [records[0].data[i], records[1].data[i]],
-                    bilinearInterpolateVector) :
-                buildGrid(header, i => records[0].data[i], bilinearInterpolateScalar);
-            return Object.assign(this, grid);
+            if (type !== "velocity") {
+                return Object.assign(this, buildGrid(header, i => records[0].data[i], bilinearInterpolateScalar));
+            }
+            const [u, v] = records.map(r => r.data);
+            const speeds = u.flatMap((x, i) => x === null ? [] : [Math.hypot(x, v[i])]);
+            const particles = {...this.particles, maxIntensity: quantile(speeds, this.particles.brightestQuantile)};
+            return Object.assign(this, {particles},
+                buildGrid(header, i => u[i] === null ? null : [u[i], v[i]], bilinearInterpolateVector));
         }
     });
 }

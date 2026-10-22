@@ -481,7 +481,7 @@ function animate(signal, globe, field, grids) {
     if (!globe || !field || !grids) return;
 
     const bounds = globe.bounds(view);
-    // maxIntensity is the velocity at which particle color intensity is maximum
+    // maxIntensity is the speed (km/s) at which particles are brightest
     const colorStyles = µ.particleColorScale(INTENSITY_SCALE_STEP, grids.primaryGrid.particles.maxIntensity);
     const buckets = colorStyles.map(() => []);
     let particleCount = Math.round(bounds.width * PARTICLE_MULTIPLIER);

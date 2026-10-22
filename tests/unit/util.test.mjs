@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {test} from "node:test";
-import {floorMod, formatVector, segmentedColorScale, streamStep} from "../../public/js/util.js";
+import {floorMod, formatVector, quantile, segmentedColorScale, streamStep} from "../../public/js/util.js";
 
 test("floorMod is never negative and never equals the modulus", () => {
     assert.equal(floorMod(-30, 360), 330);
@@ -27,4 +27,11 @@ test("streamStep keeps the direction of the velocity and compresses its length",
         assert.ok(Math.abs(Math.hypot(dx, dy) - 0.4 * Math.pow(Math.hypot(u, v), 0.7)) < 1e-12);
     }
     assert.deepEqual(streamStep(0, 0), [0, 0]);
+});
+
+test("quantile picks the sorted element at floor(q * (n - 1))", () => {
+    const values = [5, 1, 4, 2, 3, 10, 9, 8, 7, 6];
+    assert.equal(quantile(values, 0), 1);
+    assert.equal(quantile(values, 0.95), 9);
+    assert.equal(quantile(values, 1), 10);
 });

@@ -146,6 +146,15 @@ function colorInterpolator(start, end) {
 }
 
 /**
+ * @returns {Number} the value below which the fraction q of the values lie: the element at index
+ *          floor(q * (n - 1)) of the sorted values.
+ */
+export function quantile(values, q) {
+    const sorted = Float64Array.from(values).sort();
+    return sorted[Math.floor(q * (sorted.length - 1))];
+}
+
+/**
  * Returns the screen step [dx, dy] of a particle for one frame, from the velocity vector [u, v] in pixels per
  * frame. The step keeps the vector's direction, and its length is 0.4 * |v|^0.7, which compresses the wide range
  * of speeds so that both slow and fast streams stay visible.
