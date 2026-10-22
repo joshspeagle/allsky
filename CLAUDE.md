@@ -97,7 +97,7 @@ The data files, the code and the URL hashes still use earth's weather names:
    | 100 to 500 lines | two reviewers: reuse with simplification, efficiency with altitude | `medium` |
    | Over 500 lines | four reviewers, one per angle | `high` |
 
-4. Before ready, if every commit on the branch is by Claude, fold each fix into the commit it corrects (`git commit --fixup=<commit>`, then `GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash origin/master`) and push with `--force-with-lease`. Otherwise fixes are new commits.
+4. Before ready, if every commit on the branch is by Claude, fold each fix into the commit it corrects (`git commit --fixup=<commit>`, then `GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash origin/master`) and push with `--force-with-lease`. Otherwise, or where the environment does not allow a force-push, fixes are new commits.
 5. Mark it ready when its checklist is done. After that, fixes are new commits.
 6. Merge it with a merge commit when CI passes, no review thread is unresolved, each request to Claude has an answer and every required approval is given. Then add its decisions to the phase's decision log.
 
