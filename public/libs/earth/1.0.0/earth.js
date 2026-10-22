@@ -9,9 +9,6 @@
 (function() {
     "use strict";
 
-    var SECOND = 1000;
-    var MINUTE = 60 * SECOND;
-    var HOUR = 60 * MINUTE;
     var MAX_TASK_TIME = 100;                  // amount of time before a task yields control (millis)
     var MIN_SLEEP_TIME = 25;                  // amount of time a task waits before resuming (millis)
     var MIN_MOVE = 4;                         // slack before a drag operation beings (pixels)
@@ -75,7 +72,6 @@
     var configuration =
         µ.buildConfiguration(globes, products.overlayTypes);  // holds the page's current configuration settings
     var inputController = buildInputController();             // interprets drag/zoom operations
-    var meshAgent = newAgent();      // map data for the earth
     var globeAgent = newAgent();     // the model of the globe
     var gridAgent = newAgent();      // the grid of weather data
     var rendererAgent = newAgent();  // the globe SVG renderer
@@ -164,20 +160,6 @@
         }, MOVE_END_WAIT);  // wait for a bit to decide if user has stopped moving the globe
 
         d3.select("#display").call(zoom);
-        d3.select("#show-location").on("click", function() {
-            if (navigator.geolocation) {
-                report.status("Finding current position...");
-                navigator.geolocation.getCurrentPosition(function(pos) {
-                    report.status("");
-                    var coord = [pos.coords.longitude, pos.coords.latitude], rotate = globe.locate(coord);
-                    if (rotate) {
-                        globe.projection.rotate(rotate);
-                        configuration.save({orientation: globe.orientation()});  // triggers reorientation
-                    }
-                    dispatch.trigger("click", globe.projection(coord), coord);
-                }, log.error);
-            }
-        });
 
         function reorient() {
             var options = arguments[3] || {};
@@ -206,31 +188,6 @@
     }
 
     /**
-     * @param resource the GeoJSON resource's URL
-     * @returns {Object} a promise for GeoJSON topology features: {boundaryLo:, boundaryHi:}
-     */
-    function buildMesh(resource) {
-        var cancel = this.cancel;
-        report.status("Downloading...");
-        return µ.loadJson(resource).then(function(topo) {
-            if (cancel.requested) return null;
-            log.time("building meshes");
-            var o = topo.objects;
-            var coastLo = topojson.feature(topo, µ.isMobile() ? o.coastline_tiny : o.coastline_110m);
-            var coastHi = topojson.feature(topo, µ.isMobile() ? o.coastline_110m : o.coastline_50m);
-            var lakesLo = topojson.feature(topo, µ.isMobile() ? o.lakes_tiny : o.lakes_110m);
-            var lakesHi = topojson.feature(topo, µ.isMobile() ? o.lakes_110m : o.lakes_50m);
-            log.timeEnd("building meshes");
-            return {
-//                 coastLo: coastLo,
-//                 coastHi: coastHi,
-//                 lakesLo: lakesLo,
-//                 lakesHi: lakesHi
-            };
-        });
-    }
-
-    /**
      * @param {String} projectionName the desired projection's name.
      * @returns {Object} a promise for a globe object.
      */
@@ -242,43 +199,23 @@
         return when(builder(view));
     }
 
-    // Some hacky stuff to ensure only one download can be in progress at a time.
-    var downloadsInProgress = 0;
-
     function buildGrids() {
         report.status("Downloading...");
         log.time("build grids");
         // UNDONE: upon failure to load a product, the unloaded product should still be stored in the agent.
         //         this allows us to use the product for navigation and other state.
         var cancel = this.cancel;
-        downloadsInProgress++;
         var loaded = when.map(products.productsFor(configuration.attributes), function(product) {
             return product.load(cancel);
         });
         return when.all(loaded).then(function(products) {
-            log.time("build grids");
+            log.timeEnd("build grids");
             return {primaryGrid: products[0], overlayGrid: products[1] || products[0]};
-        }).ensure(function() {
-            downloadsInProgress--;
         });
     }
 
-    /**
-     * Modifies the configuration to navigate to the chronologically next or previous data layer.
-     */
-    function navigate(step) {
-        if (downloadsInProgress > 0) {
-            log.debug("Download in progress--ignoring nav request.");
-            return;
-        }
-        var next = gridAgent.value().primaryGrid.navigate(step);
-        if (next) {
-            configuration.save(µ.dateToConfig(next));
-        }
-    }
-
-    function buildRenderer(mesh, globe) {
-        if (!mesh || !globe) return null;
+    function buildRenderer(globe) {
+        if (!globe) return null;
 
         report.status("Rendering Globe...");
         log.time("rendering map");
@@ -297,8 +234,6 @@
         globe.defineMap(d3.select("#map"), d3.select("#foreground"));
 
         var path = d3.geo.path().projection(globe.projection).pointRadius(7);
-        var coastline = d3.select(".coastline");
-        var lakes = d3.select(".lakes");
         d3.selectAll("path").attr("d", path);  // do an initial draw -- fixes issue with safari
 
         function drawLocationMark(point, coord) {
@@ -336,16 +271,12 @@
         dispatch.listenTo(
             inputController, {
                 moveStart: function() {
-                    coastline.datum(mesh.coastLo);
-                    lakes.datum(mesh.lakesLo);
                     rendererAgent.trigger("start");
                 },
                 move: function() {
                     doDraw_throttled();
                 },
                 moveEnd: function() {
-                    coastline.datum(mesh.coastHi);
-                    lakes.datum(mesh.lakesHi);
                     d3.selectAll("path").attr("d", path);
                     rendererAgent.trigger("render");
                 },
@@ -693,53 +624,6 @@
     }
 
     /**
-     * Extract the date the grids are valid, or the current date if no grid is available.
-     * UNDONE: if the grids hold unloaded products, then the date can be extracted from them.
-     *         This function would simplify nicely.
-     */
-    function validityDate(grids) {
-        // When the active layer is considered "current", use its time as now, otherwise use current time as
-        // now (but rounded down to the nearest three-hour block).
-        var THREE_HOURS = 3 * HOUR;
-        var now = grids ? grids.primaryGrid.date.getTime() : Math.floor(Date.now() / THREE_HOURS) * THREE_HOURS;
-        var parts = configuration.get("date").split("/");  // yyyy/mm/dd or "current"
-        var hhmm = configuration.get("hour");
-        return parts.length > 1 ?
-            Date.UTC(+parts[0], parts[1] - 1, +parts[2], +hhmm.substring(0, 2)) :
-            parts[0] === "current" ? now : null;
-    }
-
-    /**
-     * Display the grid's validity date in the menu. Allow toggling between local and UTC time.
-     */
-    function showDate(grids) {
-        var date = new Date(validityDate(grids)), isLocal = d3.select("#data-date").classed("local");
-        var formatted = isLocal ? µ.toLocalISO(date) : µ.toUTCISO(date);
-        d3.select("#data-date").text(formatted + " " + (isLocal ? "Local" : "UTC"));
-        d3.select("#toggle-zone").text("⇄ " + (isLocal ? "UTC" : "Local"));
-    }
-
-    /**
-     * Display the grids' types in the menu.
-     */
-    function showGridDetails(grids) {
-        showDate(grids);
-        var description = "", center = "";
-        if (grids) {
-            var langCode = d3.select("body").attr("data-lang") || "en";
-            var pd = grids.primaryGrid.description(langCode), od = grids.overlayGrid.description(langCode);
-            description = od.name + od.qualifier;
-            if (grids.primaryGrid !== grids.overlayGrid) {
-                // Combine both grid descriptions together with a " + " if their qualifiers are the same.
-                description = (pd.qualifier === od.qualifier ? pd.name : pd.name + pd.qualifier) + " + " + description;
-            }
-            center = grids.overlayGrid.source;
-        }
-        d3.select("#data-layer").text(description);
-        d3.select("#data-center").text(center);
-    }
-
-    /**
      * Constructs a toggler for the specified product's units, storing the toggle state on the element having
      * the specified id. For example, given a product having units ["m/s", "mph"], the object returned by this
      * method sets the element's "data-index" attribute to 0 for m/s and 1 for mph. Calling value() returns the
@@ -864,26 +748,12 @@
         });
     }
 
-    function reportSponsorClick(type) {
-        if (ga) {
-            ga("send", "event", "sponsor", type);
-        }
-    }
-
     /**
      * Registers all event handlers to bind components and page elements together. There must be a cleaner
      * way to accomplish this...
      */
     function init() {
         report.status("Initializing...");
-
-        d3.select("#sponsor-link")
-            .attr("target", µ.isEmbeddedInIFrame() ? "_new" : null)
-            .on("click", reportSponsorClick.bind(null, "click"))
-            .on("contextmenu", reportSponsorClick.bind(null, "right-click"))
-        d3.select("#sponsor-hide").on("click", function() {
-            d3.select("#sponsor").classed("invisible", true);
-        });
 
         d3.selectAll(".fill-screen").attr("width", view.width).attr("height", view.height);
         // Adjust size of the scale canvas to fill the width of the menu to the right of the label.
@@ -894,17 +764,12 @@
 
         d3.select("#show-menu").on("click", function() {
             if (µ.isEmbeddedInIFrame()) {
-                window.open("http://earth.nullschool.net/" + window.location.hash, "_blank");
+                window.open(window.location.href, "_blank");
             }
             else {
                 d3.select("#menu").classed("invisible", !d3.select("#menu").classed("invisible"));
             }
         });
-
-        if (µ.isFF()) {
-            // Workaround FF performance issue of slow click behavior on map having thick coastlines.
-            d3.select("#display").classed("firefox", true);
-        }
 
         // Tweak document to distinguish CSS styling between touch and non-touch environments. Hacky hack.
         if ("ontouchstart" in document.documentElement) {
@@ -921,10 +786,6 @@
         });
 
         configuration.on("change", report.reset);
-
-        meshAgent.listenTo(configuration, "change:topology", function(context, attr) {
-            meshAgent.submit(buildMesh, attr);
-        });
 
         globeAgent.listenTo(configuration, "change:projection", function(source, attr) {
             globeAgent.submit(buildGlobe, attr);
@@ -955,22 +816,10 @@
                 gridAgent.submit(buildGrids);
             }
         });
-        gridAgent.on("submit", function() {
-            showGridDetails(null);
-        });
-        gridAgent.on("update", function(grids) {
-            showGridDetails(grids);
-        });
-        d3.select("#toggle-zone").on("click", function() {
-            d3.select("#data-date").classed("local", !d3.select("#data-date").classed("local"));
-            showDate(gridAgent.cancel.requested ? null : gridAgent.value());
-        });
 
-        function startRendering() {
-            rendererAgent.submit(buildRenderer, meshAgent.value(), globeAgent.value());
-        }
-        rendererAgent.listenTo(meshAgent, "update", startRendering);
-        rendererAgent.listenTo(globeAgent, "update", startRendering);
+        rendererAgent.listenTo(globeAgent, "update", function(globe) {
+            rendererAgent.submit(buildRenderer, globe);
+        });
 
         function startInterpolation() {
             fieldAgent.submit(interpolateField, globeAgent.value(), gridAgent.value());
@@ -1016,79 +865,6 @@
         fieldAgent.on("update", updateLocationDetails);
         d3.select("#location-close").on("click", _.partial(clearLocationDetails, true));
 
-        // Modify menu depending on what mode we're in.
-        configuration.on("change:param", function(context, mode) {
-            d3.selectAll(".ocean-mode").classed("invisible", mode !== "ocean");
-            d3.selectAll(".wind-mode").classed("invisible", mode !== "wind");
-            switch (mode) {
-                case "wind":
-                    d3.select("#nav-backward-more").attr("title", "-1 Day");
-                    d3.select("#nav-backward").attr("title", "-3 Hours");
-                    d3.select("#nav-forward").attr("title", "+3 Hours");
-                    d3.select("#nav-forward-more").attr("title", "+1 Day");
-                    break;
-                case "ocean":
-                    d3.select("#nav-backward-more").attr("title", "-1 Month");
-                    d3.select("#nav-backward").attr("title", "-5 Days");
-                    d3.select("#nav-forward").attr("title", "+5 Days");
-                    d3.select("#nav-forward-more").attr("title", "+1 Month");
-                    break;
-            }
-        });
-
-        // Add handlers for mode buttons.
-        d3.select("#wind-mode-enable").on("click", function() {
-            if (configuration.get("param") !== "wind") {
-                configuration.save({param: "wind", surface: "surface", level: "level", overlayType: "default"});
-            }
-        });
-        configuration.on("change:param", function(x, param) {
-            d3.select("#wind-mode-enable").classed("highlighted", param === "wind");
-        });
-        d3.select("#ocean-mode-enable").on("click", function() {
-            if (configuration.get("param") !== "ocean") {
-                // When switching between modes, there may be no associated data for the current date. So we need
-                // find the closest available according to the catalog. This is not necessary if date is "current".
-                // UNDONE: this code is annoying. should be easier to get date for closest ocean product.
-                var ocean = {param: "ocean", surface: "surface", level: "currents", overlayType: "default"};
-                var attr = _.clone(configuration.attributes);
-                if (attr.date === "current") {
-                    configuration.save(ocean);
-                }
-                else {
-                    when.all(products.productsFor(_.extend(attr, ocean))).spread(function(product) {
-                        if (product.date) {
-                            configuration.save(_.extend(ocean, µ.dateToConfig(product.date)));
-                        }
-                    }).otherwise(report.error);
-                }
-                stopCurrentAnimation(true);  // cleanup particle artifacts over continents
-            }
-        });
-        configuration.on("change:param", function(x, param) {
-            d3.select("#ocean-mode-enable").classed("highlighted", param === "ocean");
-        });
-
-/*
-        // Add logic to disable buttons that are incompatible with each other.
-        configuration.on("change:overlayType", function(x, ot) {
-            d3.select("#surface-level").classed("disabled", ot === "air_density" || ot === "wind_power_density");
-        });
-*/
-/*
-        configuration.on("change:surface", function(x, s) {
-            d3.select("#overlay-air_density").classed("disabled", s === "surface");
-            d3.select("#overlay-wind_power_density").classed("disabled", s === "surface");
-        });
-*/
-
-        // Add event handlers for the time navigation buttons.
-        d3.select("#nav-backward-more").on("click", navigate.bind(null, -10));
-        d3.select("#nav-forward-more" ).on("click", navigate.bind(null, +10));
-        d3.select("#nav-backward"     ).on("click", navigate.bind(null, -1));
-        d3.select("#nav-forward"      ).on("click", navigate.bind(null, +1));
-        d3.select("#nav-now").on("click", function() { configuration.save({date: "current", hour: ""}); });
-
         d3.select("#option-show-grid").on("click", function() {
             configuration.save({showGridPoints: !configuration.get("showGridPoints")});
         });
@@ -1102,16 +878,13 @@
             bindButtonToConfiguration("#" + id, {param: "wind", surface: parts[0], level: parts[1]});
         });
 
-        // Add handlers for ocean animation types.
-        bindButtonToConfiguration("#animate-currents", {param: "ocean", surface: "surface", level: "currents"});
-
         // Add handlers for all overlay buttons.
         products.overlayTypes.forEach(function(type) {
-            bindButtonToConfiguration("#overlay-" + type, {overlayType: type});
+            if (type !== "wind") {
+                bindButtonToConfiguration("#overlay-" + type, {overlayType: type});
+            }
         });
         bindButtonToConfiguration("#overlay-wind", {param: "wind", overlayType: "default"});
-        bindButtonToConfiguration("#overlay-ocean-off", {overlayType: "off"});
-        bindButtonToConfiguration("#overlay-currents", {overlayType: "default"});
 
         // Add handlers for all projection buttons.
         globes.keys().forEach(function(p) {

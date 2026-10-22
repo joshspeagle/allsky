@@ -11,9 +11,7 @@ var µ = function() {
 
     var τ = 2 * Math.PI;
     var H = 0.0000360;  // 0.0000360°φ ~= 4m
-//     var DEFAULT_CONFIG = "current/wind/surface/level/orthographic";
     var DEFAULT_CONFIG = "current/wind/surface/level/atlantis";
-    var TOPOLOGY = isMobile() ? "/data/earth-topo-mobile.json?v2" : "/data/earth-topo.json?v2";
 
     /**
      * @returns {Boolean} true if the specified value is truthy.
@@ -69,7 +67,7 @@ var µ = function() {
      *          for x<=10.
      */
     function proportion(x, low, high) {
-        return (µ.clamp(x, low, high) - low) / (high - low);
+        return (clamp(x, low, high) - low) / (high - low);
     }
 
     /**
@@ -89,13 +87,6 @@ var µ = function() {
     }
 
     /**
-     * @returns {String} the specified string with the first letter capitalized.
-     */
-    function capitalize(s) {
-        return s.length === 0 ? s : s.charAt(0).toUpperCase() + s.substr(1);
-    }
-
-    /**
      * @returns {Boolean} true if agent is probably firefox. Don't really care if this is accurate.
      */
     function isFF() {
@@ -111,44 +102,6 @@ var µ = function() {
 
     function isEmbeddedInIFrame() {
         return window != window.top;
-    }
-
-    function toUTCISO(date) {
-        return date.getUTCFullYear() + "-" +
-            zeroPad(date.getUTCMonth() + 1, 2) + "-" +
-            zeroPad(date.getUTCDate(), 2) + " " +
-            zeroPad(date.getUTCHours(), 2) + ":00";
-    }
-
-    function toLocalISO(date) {
-        return date.getFullYear() + "-" +
-            zeroPad(date.getMonth() + 1, 2) + "-" +
-            zeroPad(date.getDate(), 2) + " " +
-            zeroPad(date.getHours(), 2) + ":00";
-    }
-
-    /**
-     * @returns {String} the string yyyyfmmfdd as yyyytmmtdd, where f and t are the "from" and "to" delimiters. Either
-     *          delimiter may be the empty string.
-     */
-    function ymdRedelimit(ymd, fromDelimiter, toDelimiter) {
-        if (!fromDelimiter) {
-            return ymd.substr(0, 4) + toDelimiter + ymd.substr(4, 2) + toDelimiter + ymd.substr(6, 2);
-        }
-        var parts = ymd.substr(0, 10).split(fromDelimiter);
-        return [parts[0], parts[1], parts[2]].join(toDelimiter);
-    }
-
-    /**
-     * @returns {String} the UTC year, month, and day of the specified date in yyyyfmmfdd format, where f is the
-     *          delimiter (and may be the empty string).
-     */
-    function dateToUTCymd(date, delimiter) {
-        return ymdRedelimit(date.toISOString(), "-", delimiter || "");
-    }
-
-    function dateToConfig(date) {
-        return {date: µ.dateToUTCymd(date, "/"), hour: µ.zeroPad(date.getUTCHours(), 2) + "00"};
     }
 
     /**
@@ -202,44 +155,6 @@ var µ = function() {
         };
     }
 
-    /**
-     * Produces a color style in a rainbow-like trefoil color space. Not quite HSV, but produces a nice
-     * spectrum. See http://krazydad.com/tutorials/makecolors.php.
-     *
-     * @param hue the hue rotation in the range [0, 1]
-     * @param a the alpha value in the range [0, 255]
-     * @returns {Array} [r, g, b, a]
-     */
-    function sinebowColor(hue, a) {
-        // Map hue [0, 1] to radians [0, 5/6τ]. Don't allow a full rotation because that keeps hue == 0 and
-        // hue == 1 from mapping to the same color.
-        var rad = hue * τ * 5/6;
-        rad *= 0.75;  // increase frequency to 2/3 cycle per rad
-
-        var s = Math.sin(rad);
-        var c = Math.cos(rad);
-        var r = Math.floor(Math.max(0, -c) * 255);
-        var g = Math.floor(Math.max(s, 0) * 255);
-        var b = Math.floor(Math.max(c, 0, -s) * 255);
-        return [r, g, b, a];
-    }
-
-    var BOUNDARY = 0.45;
-    var fadeToWhite = colorInterpolator(sinebowColor(1.0, 0), [255, 255, 255]);
-
-    /**
-     * Interpolates a sinebow color where 0 <= i <= j, then fades to white where j < i <= 1.
-     *
-     * @param i number in the range [0, 1]
-     * @param a alpha value in range [0, 255]
-     * @returns {Array} [r, g, b, a]
-     */
-    function extendedSinebowColor(i, a) {
-        return i <= BOUNDARY ?
-            sinebowColor(i / BOUNDARY, a) :
-            fadeToWhite((i - BOUNDARY) / (1 - BOUNDARY), a);
-    }
-
     function asColorStyle(r, g, b, a) {
         return "rgba(" + r + ", " + g + ", " + b + ", " + a + ")";
     }
@@ -287,7 +202,7 @@ var µ = function() {
                 }
             }
             var range = ranges[i];
-            return interpolators[i](µ.proportion(point, range[0], range[1]), alpha);
+            return interpolators[i](proportion(point, range[0], range[1]), alpha);
         };
     }
 
@@ -483,7 +398,7 @@ var µ = function() {
              * task, if any, is immediately cancelled.
              * @returns this agent.
              */
-            submit: function(task, arg0, arg1, and_so_on) {
+            submit: function(/* task, arg0, arg1, ... */) {
                 // immediately cancel the previous task
                 this.cancel();
                 // schedule the new task and update the agent with its associated cancel function
@@ -514,7 +429,7 @@ var µ = function() {
     function parse(hash, projectionNames, overlayTypes) {
         var option, result = {};
         //             1        2        3          4          5            6      7      8    9
-        var tokens = /^(current|(\d{4})\/(\d{1,2})\/(\d{1,2})\/(\d{3,4})Z)\/(\w+)\/(\w+)\/(\w+)([\/].+)?/.exec(hash);
+        var tokens = /^(current|(\d{4})\/(\d{1,2})\/(\d{1,2})\/(\d{3,4})Z)\/(\w+)\/(\w+)\/(\w+)(\/.+)?/.exec(hash);
         if (tokens) {
             var date = tokens[1] === "current" ?
                 "current" :
@@ -528,7 +443,6 @@ var µ = function() {
                 level: tokens[8],            // non-empty alphanumeric _
                 projection: "orthographic",
                 orientation: "",
-                topology: TOPOLOGY,
                 overlayType: "default",
                 showGridPoints: false
             };
@@ -620,30 +534,18 @@ var µ = function() {
     }
 
     return {
-        isTruthy: isTruthy,
-        isValue: isValue,
-        coalesce: coalesce,
         floorMod: floorMod,
         distance: distance,
         clamp: clamp,
-        proportion: proportion,
         spread: spread,
-        zeroPad: zeroPad,
-        capitalize: capitalize,
         isFF: isFF,
         isMobile: isMobile,
         isEmbeddedInIFrame: isEmbeddedInIFrame,
-        toUTCISO: toUTCISO,
-        toLocalISO: toLocalISO,
-        ymdRedelimit: ymdRedelimit,
-        dateToUTCymd: dateToUTCymd,
-        dateToConfig: dateToConfig,
+        isValue: isValue,
         log: log,
         view: view,
         removeChildren: removeChildren,
         clearCanvas: clearCanvas,
-        sinebowColor: sinebowColor,
-        extendedSinebowColor: extendedSinebowColor,
         windIntensityColorScale: windIntensityColorScale,
         segmentedColorScale: segmentedColorScale,
         formatCoordinates: formatCoordinates,
@@ -652,7 +554,6 @@ var µ = function() {
         loadJson: loadJson,
         distortion: distortion,
         newAgent: newAgent,
-        parse: parse,
         buildConfiguration: buildConfiguration
     };
 
