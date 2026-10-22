@@ -121,7 +121,7 @@ test.describe("location readouts", () => {
 
     test("closing the readout clears it", async ({ page }) => {
         await openMap(page, hashFor("5-8", "density"));
-        await readoutAt(page, ...PROBES[0]);
+        await readoutAt(page, ...PROBES[1]);
         await page.click("#location-close");
         await expect(page.locator("#location-coord")).toHaveText("");
         await expect(page.locator(".location-mark")).toHaveCount(0);
