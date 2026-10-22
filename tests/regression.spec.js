@@ -54,7 +54,7 @@ const PROBES = [[480, 140], [300, 200], [700, 230], [480, 300], [380, 420], [600
 test.describe("map pixels", () => {
     const cases = [
         ["default view", ""],
-        ["velocity 7-11 kpc", hashFor("7-11", "velocity")],
+        ["velocity 0-2 kpc", hashFor("0-2", "velocity")],
         ["no overlay", hashFor("5-8", "off")],
         ["grid points", hashFor("5-8", "density") + "/grid=on"],
         ["zoomed orthographic", hashFor("3-6", "age", "orthographic=40.00,-20.00,600")]
