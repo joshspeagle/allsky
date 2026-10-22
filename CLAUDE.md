@@ -11,6 +11,7 @@ allsky is an animated all-sky map of the Milky Way's stars. It shows the mean ta
 - `public/data/weather/current/`: the data, one JSON file per quantity and distance bin, on a 1 degree grid in Galactic longitude and latitude.
 - `public/styles/`: the stylesheet and two subset fonts.
 - `dev-server.js`: a local static server (Express) for `public/`.
+- `tests/`: the Playwright regression tests and their snapshots (`tests/snapshots/`).
 
 ### Earth names
 
@@ -39,7 +40,10 @@ The data files, the code and the URL hashes still use earth's weather names:
 
 - Set up: `npm ci`. Node 18 or later.
 - Run: `node dev-server.js 8080`, then open http://localhost:8080.
-- Lint: `npx grunt`.
+- Lint: `npm run lint`.
+- Test: `npm test`. It runs the Playwright regression tests in `tests/` against the dev server, in Chromium. Without the preinstalled browsers, run `npx playwright install chromium` once.
+- Update the test snapshots: `npx playwright test --update-snapshots`, only for an output change the lead approved. Check every changed file in `tests/snapshots/` before committing it.
+- CI (`.github/workflows/ci.yml`) runs the lint and the tests for every push to `master` and every pull request.
 
 ## Deployment
 
