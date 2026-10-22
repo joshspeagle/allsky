@@ -4,6 +4,8 @@ allsky
 allsky is an animated all-sky map of the Milky Way's stars. It shows the mean tangential velocity of stars as
 moving streams, and their density, metallicity and age as colour overlays, in nine distance bins from 0 to 50 kpc.
 
+See it at https://joshspeagle.com/allsky/.
+
 The stellar properties come from [brutus](https://github.com/joshspeagle/brutus) fits to photometry from
 [PanSTARRS1](https://panstarrs.stsci.edu/), [2MASS](https://old.ipac.caltech.edu/2mass/),
 [UKIDSS](http://www.ukidss.org/), [unWISE](http://catalog.unwise.me/) and
