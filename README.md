@@ -36,6 +36,8 @@ Notes
 - Stream speed does not scale linearly with the tangential velocity, so that the wide range of velocities at
   different distances stays visible.
 - For display only, all data are smoothed with a Gaussian beam with a FWHM of 0.01 radians (about 30 arcmin).
+- Click a point to read its values: the direction of motion (in degrees from Galactic north toward increasing
+  longitude) and the speed, and the value of the overlay. Grey regions of the sphere are unobserved.
 
 Questions and problems go to the [issue tracker](https://github.com/joshspeagle/allsky/issues). Most of the code
 follows earth, so an unanswered question may already be answered there.
