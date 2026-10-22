@@ -17,7 +17,7 @@ const test = base.test.extend({
 });
 
 /**
- * Returns the number of overlays the page has drawn for newly interpolated fields (see earth.js).
+ * Returns the number of overlays the page has drawn for newly interpolated fields (see main.js).
  */
 function overlayDraws(page) {
     return page.evaluate(() => +(document.documentElement.dataset.fieldOverlays || 0));
@@ -47,7 +47,7 @@ async function readoutAt(page, x, y) {
         const text = id => document.getElementById(id).textContent;
         return {
             coord: text("location-coord"),
-            vector: [text("location-wind"), text("location-wind-units")].join(" ").trim(),
+            vector: [text("location-velocity"), text("location-velocity-units")].join(" ").trim(),
             value: [text("location-value"), text("location-value-units")].join(" ").trim()
         };
     });

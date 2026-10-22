@@ -33,8 +33,8 @@
                 <span id="location-close" class="invisible text-button"> ✕ </span>
             </p>
             <p>
-                <span id="location-wind"></span>
-                <span id="location-wind-units"></span>
+                <span id="location-velocity"></span>
+                <span id="location-velocity-units"></span>
             </p>
             <p>
                 <span id="location-value"></span>
@@ -42,43 +42,43 @@
             </p>
         </div>
 
-        <p id="earth">
+        <p id="title">
             <span id="show-menu" class="text-button" title="menu">allsky</span>
             <span id="progress" class="invisible"></span>
         </p>
 
         <div id="menu" class="invisible">
             <p>Distance | <span
-                class="surface text-button" id="isobaric-250hPa">0-2</span> / <span
-                class="surface text-button" id="isobaric-1000hPa">1-3</span> / <span
-                class="surface text-button" id="isobaric-850hPa">2-4</span> / <span
-                class="surface text-button" id="isobaric-700hPa">3-6</span> / <span
-                class="surface text-button" id="isobaric-500hPa">5-8</span> / <span
-                class="surface text-button" id="surface-level" title="Surface">7-11</span> / <span
-                class="surface text-button" id="isobaric-70hPa">10-15</span> / <span
-                class="surface text-button" id="isobaric-20hPa">13-25</span> / <span
-                class="surface text-button" id="isobaric-10hPa">20-50</span> kpc
+                class="text-button" data-bin="0-2kpc">0-2</span> / <span
+                class="text-button" data-bin="1-3kpc">1-3</span> / <span
+                class="text-button" data-bin="2-4kpc">2-4</span> / <span
+                class="text-button" data-bin="3-6kpc">3-6</span> / <span
+                class="text-button" data-bin="5-8kpc">5-8</span> / <span
+                class="text-button" data-bin="7-11kpc">7-11</span> / <span
+                class="text-button" data-bin="10-15kpc">10-15</span> / <span
+                class="text-button" data-bin="13-25kpc">13-25</span> / <span
+                class="text-button" data-bin="20-50kpc">20-50</span> kpc
             </p>
             <p>Overlay | <span
-                class="text-button" id="overlay-off">None</span> – <span
-                class="text-button" id="overlay-wind" title="Mean Tangential Velocity">Velocity</span> – <span
-                class="text-button" id="overlay-temp" title="Total Stellar Density">Density</span> – <span
-                class="text-button" id="overlay-relative_humidity" title="Mean Metallicity">Metallicity</span> – <span
-                class="text-button" id="overlay-air_density" title="Mean Age (Gyr)">Age</span>
+                class="text-button" data-overlay="none">None</span> – <span
+                class="text-button" data-overlay="velocity" title="Mean Tangential Velocity">Velocity</span> – <span
+                class="text-button" data-overlay="density" title="Total Stellar Density">Density</span> – <span
+                class="text-button" data-overlay="metallicity" title="Mean Metallicity">Metallicity</span> – <span
+                class="text-button" data-overlay="age" title="Mean Age (Gyr)">Age</span>
             </p>
             <p><span id="scale-label">Scale | </span><canvas id="scale"></canvas></p>
             <p>Projection | <span
-                class="proj text-button" id="atlantis" title="Atlantis">A</span> – <span
-                class="proj text-button" id="azimuthal_equidistant" title="Azimuthal Equidistant">AE</span> – <span
-                class="proj text-button" id="conic_equidistant" title="Conic Equidistant">CE</span> – <span
-                class="proj text-button" id="equirectangular" title="Equirectangular">E</span> – <span
-                class="proj text-button" id="orthographic" title="Orthographic">O</span> – <span
-                class="proj text-button" id="stereographic" title="Stereographic">S</span> – <span
-                class="proj text-button" id="waterman" title="Waterman Butterfly">WB</span> – <span
-                class="proj text-button" id="winkel3" title="Winkel Tripel">W3</span>
+                class="text-button" data-projection="mollweide" title="Mollweide">M</span> – <span
+                class="text-button" data-projection="azimuthal_equidistant" title="Azimuthal Equidistant">AE</span> – <span
+                class="text-button" data-projection="conic_equidistant" title="Conic Equidistant">CE</span> – <span
+                class="text-button" data-projection="equirectangular" title="Equirectangular">E</span> – <span
+                class="text-button" data-projection="orthographic" title="Orthographic">O</span> – <span
+                class="text-button" data-projection="stereographic" title="Stereographic">S</span> – <span
+                class="text-button" data-projection="waterman" title="Waterman Butterfly">WB</span> – <span
+                class="text-button" data-projection="winkel3" title="Winkel Tripel">W3</span>
             </p>
             <p><span
-                class="text-button" id="option-show-grid" title="Toggle Grid">Toggle Grid</span>
+                class="text-button" id="show-grid" title="Toggle Grid">Toggle Grid</span>
             </p>
 
             <p>Release | Augustus I </p>

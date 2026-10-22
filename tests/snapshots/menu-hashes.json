@@ -1,98 +1,98 @@
 [
  [
-  "isobaric-250hPa",
-  "current/wind/isobaric/250hPa/atlantis"
+  "[data-bin=\"0-2kpc\"]",
+  "0-2kpc/velocity/mollweide"
  ],
  [
-  "isobaric-1000hPa",
-  "current/wind/isobaric/1000hPa/atlantis"
+  "[data-bin=\"1-3kpc\"]",
+  "1-3kpc/velocity/mollweide"
  ],
  [
-  "isobaric-850hPa",
-  "current/wind/isobaric/850hPa/atlantis"
+  "[data-bin=\"2-4kpc\"]",
+  "2-4kpc/velocity/mollweide"
  ],
  [
-  "isobaric-700hPa",
-  "current/wind/isobaric/700hPa/atlantis"
+  "[data-bin=\"3-6kpc\"]",
+  "3-6kpc/velocity/mollweide"
  ],
  [
-  "isobaric-500hPa",
-  "current/wind/isobaric/500hPa/atlantis"
+  "[data-bin=\"5-8kpc\"]",
+  "5-8kpc/velocity/mollweide"
  ],
  [
-  "surface-level",
-  "current/wind/surface/level/atlantis"
+  "[data-bin=\"7-11kpc\"]",
+  "7-11kpc/velocity/mollweide"
  ],
  [
-  "isobaric-70hPa",
-  "current/wind/isobaric/70hPa/atlantis"
+  "[data-bin=\"10-15kpc\"]",
+  "10-15kpc/velocity/mollweide"
  ],
  [
-  "isobaric-20hPa",
-  "current/wind/isobaric/20hPa/atlantis"
+  "[data-bin=\"13-25kpc\"]",
+  "13-25kpc/velocity/mollweide"
  ],
  [
-  "isobaric-10hPa",
-  "current/wind/isobaric/10hPa/atlantis"
+  "[data-bin=\"20-50kpc\"]",
+  "20-50kpc/velocity/mollweide"
  ],
  [
-  "overlay-off",
-  "current/wind/isobaric/10hPa/overlay=off/atlantis"
+  "[data-overlay=\"none\"]",
+  "20-50kpc/none/mollweide"
  ],
  [
-  "overlay-wind",
-  "current/wind/isobaric/10hPa/atlantis"
+  "[data-overlay=\"velocity\"]",
+  "20-50kpc/velocity/mollweide"
  ],
  [
-  "overlay-temp",
-  "current/wind/isobaric/10hPa/overlay=temp/atlantis"
+  "[data-overlay=\"density\"]",
+  "20-50kpc/density/mollweide"
  ],
  [
-  "overlay-relative_humidity",
-  "current/wind/isobaric/10hPa/overlay=relative_humidity/atlantis"
+  "[data-overlay=\"metallicity\"]",
+  "20-50kpc/metallicity/mollweide"
  ],
  [
-  "overlay-air_density",
-  "current/wind/isobaric/10hPa/overlay=air_density/atlantis"
+  "[data-overlay=\"age\"]",
+  "20-50kpc/age/mollweide"
  ],
  [
-  "atlantis",
-  "current/wind/isobaric/10hPa/overlay=air_density/atlantis"
+  "[data-projection=\"mollweide\"]",
+  "20-50kpc/age/mollweide"
  ],
  [
-  "azimuthal_equidistant",
-  "current/wind/isobaric/10hPa/overlay=air_density/azimuthal_equidistant"
+  "[data-projection=\"azimuthal_equidistant\"]",
+  "20-50kpc/age/azimuthal_equidistant"
  ],
  [
-  "conic_equidistant",
-  "current/wind/isobaric/10hPa/overlay=air_density/conic_equidistant"
+  "[data-projection=\"conic_equidistant\"]",
+  "20-50kpc/age/conic_equidistant"
  ],
  [
-  "equirectangular",
-  "current/wind/isobaric/10hPa/overlay=air_density/equirectangular"
+  "[data-projection=\"equirectangular\"]",
+  "20-50kpc/age/equirectangular"
  ],
  [
-  "orthographic",
-  "current/wind/isobaric/10hPa/overlay=air_density/orthographic"
+  "[data-projection=\"orthographic\"]",
+  "20-50kpc/age/orthographic"
  ],
  [
-  "stereographic",
-  "current/wind/isobaric/10hPa/overlay=air_density/stereographic"
+  "[data-projection=\"stereographic\"]",
+  "20-50kpc/age/stereographic"
  ],
  [
-  "waterman",
-  "current/wind/isobaric/10hPa/overlay=air_density/waterman"
+  "[data-projection=\"waterman\"]",
+  "20-50kpc/age/waterman"
  ],
  [
-  "winkel3",
-  "current/wind/isobaric/10hPa/overlay=air_density/winkel3"
+  "[data-projection=\"winkel3\"]",
+  "20-50kpc/age/winkel3"
  ],
  [
-  "option-show-grid",
-  "current/wind/isobaric/10hPa/overlay=air_density/winkel3/grid=on"
+  "#show-grid",
+  "20-50kpc/age/winkel3/grid"
  ],
  [
-  "option-show-grid",
-  "current/wind/isobaric/10hPa/overlay=air_density/winkel3"
+  "#show-grid",
+  "20-50kpc/age/winkel3"
  ]
 ]

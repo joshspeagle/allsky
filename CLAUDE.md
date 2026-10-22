@@ -8,33 +8,14 @@ allsky is an animated all-sky map of the Milky Way's stars. It shows the mean ta
 - `public/index.html`: the page and its menu.
 - `public/js/`: the application code, as ES modules. `main.js` is the entry point: the page wiring, the interpolated field, the particle animation and the overlay. `configuration.js` holds the settings and their URL hash; `agent.js` runs the asynchronous tasks; `events.js` is the event emitter both build on; `globes.js` holds the map projections; `products.js` the data layers, their colour scales and the grid interpolation; `util.js` the helpers.
 - `public/libs/`: the vendored libraries, d3 and d3-geo-projection, which `index.html` loads as classic scripts before `main.js`. The modules read them as `window.d3`.
-- `public/data/weather/current/`: the data, one JSON file per quantity and distance bin, on a 1 degree grid in Galactic longitude and latitude.
+- `public/data/<bin>/<quantity>.json`: the data, one file per distance bin (`0-2kpc` to `20-50kpc`) and quantity (`velocity`, `density`, `metallicity`, `age`), on a 1 degree grid in Galactic longitude and latitude. Each file is a JSON array of records `{header, data}`: one record for a scalar, two for `velocity` (the components u and v, in km/s).
 - `public/styles/`: the stylesheet and its subset font.
 - `dev-server.js`: a local static server (Express) for `public/`.
 - `tests/`: the Playwright regression tests and their snapshots (`tests/snapshots/`).
 
-### Earth names
+### URL hash
 
-The data files, the code and the URL hashes still use earth's weather names:
-
-| earth name | allsky meaning |
-|---|---|
-| `wind` | mean tangential velocity (km/s) |
-| `temp` | total stellar density (stars) |
-| `relative_humidity` | mean metallicity ([Fe/H]) |
-| `air_density` | mean age (Gyr) |
-
-| earth level | distance (kpc) |
-|---|---|
-| `isobaric-250hPa` | 0-2 |
-| `isobaric-1000hPa` | 1-3 |
-| `isobaric-850hPa` | 2-4 |
-| `isobaric-700hPa` | 3-6 |
-| `isobaric-500hPa` | 5-8 |
-| `surface-level` | 7-11 |
-| `isobaric-70hPa` | 10-15 |
-| `isobaric-20hPa` | 13-25 |
-| `isobaric-10hPa` | 20-50 |
+The hash holds the view as segments separated by `/`, in any order: a distance bin (`7-11kpc`), an overlay (`velocity`, `density`, `metallicity`, `age` or `none`), a projection with an optional orientation (`orthographic=λ,φ,scale`), and `grid` for the grid points. A missing or unknown segment takes its default, `7-11kpc/velocity/mollweide`. `configuration.js` parses and writes it.
 
 ## Commands
 

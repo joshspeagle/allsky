@@ -200,7 +200,7 @@ class Globe {
 
 // For each projection name: newProjection(view), and the options of its Globe.
 const PROJECTIONS = new Map([
-    ["atlantis", [() => d3.geoMollweide().rotate(DEFAULT_ROTATION).precision(0.1)]],
+    ["mollweide", [() => d3.geoMollweide().rotate(DEFAULT_ROTATION).precision(0.1)]],
     ["azimuthal_equidistant", [() => d3.geoAzimuthalEquidistant().precision(0.1).rotate([0, -90]).clipAngle(180 - 0.001)]],
     ["conic_equidistant", [() => d3.geoConicEquidistant().center([0, 0]).rotate(DEFAULT_ROTATION).precision(0.1),
         {center: view => [view.width / 2, view.height / 2 + view.height * 0.065]}]],

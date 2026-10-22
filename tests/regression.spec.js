@@ -6,37 +6,25 @@
 const fs = require("fs");
 const { test, expect, openMap, overlayDraws, waitForOverlayDraw, readoutAt, hashOf } = require("./helpers");
 
-// The names the page uses for each distance bin, overlay and projection: the hash segment and the menu button id.
-const PREFIX = "current/wind";
-const BINS = {
-    "0-2": { hash: "isobaric/250hPa", id: "isobaric-250hPa" },
-    "1-3": { hash: "isobaric/1000hPa", id: "isobaric-1000hPa" },
-    "2-4": { hash: "isobaric/850hPa", id: "isobaric-850hPa" },
-    "3-6": { hash: "isobaric/700hPa", id: "isobaric-700hPa" },
-    "5-8": { hash: "isobaric/500hPa", id: "isobaric-500hPa" },
-    "7-11": { hash: "surface/level", id: "surface-level" },
-    "10-15": { hash: "isobaric/70hPa", id: "isobaric-70hPa" },
-    "13-25": { hash: "isobaric/20hPa", id: "isobaric-20hPa" },
-    "20-50": { hash: "isobaric/10hPa", id: "isobaric-10hPa" }
-};
-const OVERLAYS = {
-    none: { hash: "overlay=off", id: "overlay-off" },
-    velocity: { hash: null, id: "overlay-wind" },
-    density: { hash: "overlay=temp", id: "overlay-temp" },
-    metallicity: { hash: "overlay=relative_humidity", id: "overlay-relative_humidity" },
-    age: { hash: "overlay=air_density", id: "overlay-air_density" }
-};
+// The distance bins, overlays and projections, by the names the page uses in the hash and the menu.
+const BINS = ["0-2kpc", "1-3kpc", "2-4kpc", "3-6kpc", "5-8kpc", "7-11kpc", "10-15kpc", "13-25kpc", "20-50kpc"];
+const OVERLAYS = ["none", "velocity", "density", "metallicity", "age"];
 const PROJECTIONS = [
-    "atlantis", "azimuthal_equidistant", "conic_equidistant", "equirectangular",
+    "mollweide", "azimuthal_equidistant", "conic_equidistant", "equirectangular",
     "orthographic", "stereographic", "waterman", "winkel3"
 ];
-const DEFAULT_PROJECTION = "atlantis";
-const GRID = { hash: "grid=on", id: "option-show-grid" };
 
-function hashFor(bin, overlay, projection) {
-    return [PREFIX, BINS[bin].hash, OVERLAYS[overlay].hash, projection || DEFAULT_PROJECTION]
-        .filter(Boolean).join("/");
+function hashFor(bin, overlay, projection = "mollweide") {
+    return [bin, overlay, projection].join("/");
 }
+
+// The selector of the menu button for a distance bin, an overlay or a projection.
+const button = {
+    bin: bin => `[data-bin="${bin}"]`,
+    overlay: overlay => `[data-overlay="${overlay}"]`,
+    projection: projection => `[data-projection="${projection}"]`,
+    grid: "#show-grid"
+};
 
 // Pixels in the 960x600 view that land off the sphere, on observed sky and on masked sky, in the default view.
 // The probe off the sphere comes first, because a click there leaves any earlier readout in place.
@@ -45,16 +33,16 @@ const PROBES = [[20, 20], [480, 140], [300, 200], [700, 230], [480, 300], [380, 
 test.describe("map pixels", () => {
     const cases = [
         ["default view", ""],
-        ["velocity 0-2 kpc", hashFor("0-2", "velocity")],
-        ["no overlay", hashFor("5-8", "none")],
-        ["grid points", hashFor("5-8", "density") + "/" + GRID.hash],
-        ["zoomed orthographic", hashFor("3-6", "age", "orthographic=40.00,-20.00,600")]
+        ["velocity 0-2 kpc", hashFor("0-2kpc", "velocity")],
+        ["no overlay", hashFor("5-8kpc", "none")],
+        ["grid points", hashFor("5-8kpc", "density") + "/grid"],
+        ["zoomed orthographic", hashFor("3-6kpc", "age", "orthographic=40.00,-20.00,600")]
     ];
     for (const overlay of ["density", "metallicity", "age"]) {
-        cases.push([overlay + " 5-8 kpc", hashFor("5-8", overlay)]);
+        cases.push([overlay + " 5-8 kpc", hashFor("5-8kpc", overlay)]);
     }
     for (const projection of PROJECTIONS) {
-        cases.push([projection + " projection", hashFor("0-2", "density", projection)]);
+        cases.push([projection + " projection", hashFor("0-2kpc", "density", projection)]);
     }
 
     for (const [name, hash] of cases) {
@@ -70,7 +58,7 @@ test.describe("colour bars", () => {
     // fractions of its width, with a tolerance of one pixel's change in colour.
     for (const overlay of ["velocity", "density", "metallicity", "age"]) {
         test(`${overlay} colour bar matches its snapshot`, async ({ page }) => {
-            await openMap(page, hashFor("5-8", overlay));
+            await openMap(page, hashFor("5-8kpc", overlay));
             const profile = await page.evaluate(() => {
                 const c = document.getElementById("scale");
                 const row = c.getContext("2d").getImageData(0, Math.floor(c.height / 2), c.width, 1).data;
@@ -106,21 +94,22 @@ function expectProfile(name, actual, tolerance) {
 }
 
 test.describe("location readouts", () => {
-    for (const bin of Object.keys(BINS)) {
+    for (const bin of BINS) {
+        const kpc = bin.replace("kpc", "");
         for (const overlay of ["density", "metallicity", "age"]) {
-            test(`${overlay} ${bin} kpc readouts match their snapshot`, async ({ page }) => {
+            test(`${overlay} ${kpc} kpc readouts match their snapshot`, async ({ page }) => {
                 await openMap(page, hashFor(bin, overlay));
                 const readouts = [];
                 for (const [x, y] of PROBES) {
                     readouts.push([x, y, await readoutAt(page, x, y)]);
                 }
-                expect(JSON.stringify(readouts, null, 1)).toMatchSnapshot(`readouts-${overlay}-${bin}.json`);
+                expect(JSON.stringify(readouts, null, 1)).toMatchSnapshot(`readouts-${overlay}-${kpc}.json`);
             });
         }
     }
 
     test("closing the readout clears it", async ({ page }) => {
-        await openMap(page, hashFor("5-8", "density"));
+        await openMap(page, hashFor("5-8kpc", "density"));
         await readoutAt(page, ...PROBES[1]);
         await page.click("#location-close");
         await expect(page.locator("#location-coord")).toHaveText("");
@@ -129,15 +118,15 @@ test.describe("location readouts", () => {
 });
 
 test.describe("URL hash", () => {
-    test("the default view has the default hash", async ({ page }) => {
+    test("the default view keeps an empty hash", async ({ page }) => {
         await openMap(page, "");
         expect(await hashOf(page)).toBe("");
     });
 
     for (const hash of [
-        hashFor("0-2", "density", "orthographic=12.50,-30.00,450"),
-        hashFor("20-50", "none", "winkel3") + "/" + GRID.hash,
-        hashFor("13-25", "velocity", "stereographic")
+        hashFor("0-2kpc", "density", "orthographic=12.50,-30.00,450"),
+        hashFor("20-50kpc", "none", "winkel3") + "/grid",
+        hashFor("13-25kpc", "velocity", "stereographic")
     ]) {
         test(`loading ${hash} keeps the hash`, async ({ page }) => {
             await openMap(page, hash);
@@ -146,35 +135,37 @@ test.describe("URL hash", () => {
     }
 
     test("menu buttons write the expected hashes", async ({ page }) => {
-        await openMap(page, hashFor("5-8", "velocity"));
+        await openMap(page, hashFor("5-8kpc", "velocity"));
         await page.click("#show-menu");
-        const ids = Object.values(BINS).concat(Object.values(OVERLAYS)).map(b => b.id)
-            .concat(PROJECTIONS, [GRID.id, GRID.id]);
+        const selectors = BINS.map(button.bin).concat(OVERLAYS.map(button.overlay), PROJECTIONS.map(button.projection),
+            [button.grid, button.grid]);
         const hashes = [];
-        for (const id of ids) {
-            await page.click("#" + id);
-            hashes.push([id, await hashOf(page)]);
+        for (const selector of selectors) {
+            await page.click(selector);
+            hashes.push([selector, await hashOf(page)]);
         }
         expect(JSON.stringify(hashes, null, 1)).toMatchSnapshot("menu-hashes.json");
     });
 
     test("the active buttons are highlighted", async ({ page }) => {
-        await openMap(page, hashFor("2-4", "metallicity", "winkel3"));
-        const highlighted = await page.$$eval(".highlighted", els => els.map(e => e.id).sort());
-        expect(highlighted).toEqual([BINS["2-4"].id, OVERLAYS.metallicity.id, "winkel3"].sort());
+        await openMap(page, hashFor("2-4kpc", "metallicity", "winkel3"));
+        await expect(page.locator(".highlighted")).toHaveCount(3);
+        for (const selector of [button.bin("2-4kpc"), button.overlay("metallicity"), button.projection("winkel3")]) {
+            await expect(page.locator(selector)).toHaveClass(/highlighted/);
+        }
     });
 
     test("an edited hash redraws the map", async ({ page }) => {
-        await openMap(page, hashFor("5-8", "density"));
+        await openMap(page, hashFor("5-8kpc", "density"));
         const draws = await overlayDraws(page);
-        await page.evaluate(h => { window.location.hash = h; }, hashFor("5-8", "age"));
+        await page.evaluate(h => { window.location.hash = h; }, hashFor("5-8kpc", "age"));
         await waitForOverlayDraw(page, draws);
         await expect(page).toHaveScreenshot("age-5-8-kpc.png");
     });
 });
 
 test("dragging the map changes the orientation in the hash", async ({ page }) => {
-    await openMap(page, hashFor("5-8", "density", "orthographic"));
+    await openMap(page, hashFor("5-8kpc", "density", "orthographic"));
     await page.mouse.move(480, 300);
     await page.mouse.down();
     await page.mouse.move(530, 320, { steps: 5 });
@@ -184,7 +175,7 @@ test("dragging the map changes the orientation in the hash", async ({ page }) =>
 });
 
 test("wheel, double-click and drag write the expected orientations", async ({ page }) => {
-    await openMap(page, hashFor("5-8", "density", "orthographic"));
+    await openMap(page, hashFor("5-8kpc", "density", "orthographic"));
     const hashes = [await hashOf(page)];
     // A move ends 1 s after its last event (MOVE_END_WAIT in main.js), when the hash is written.
     const record = async () => {
