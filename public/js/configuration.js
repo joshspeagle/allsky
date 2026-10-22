@@ -30,14 +30,14 @@ const DEFAULTS = {bin: "7-11kpc", overlay: "velocity", projection: "mollweide", 
 function parse(hash, names) {
     const result = {...DEFAULTS};
     hash.split("/").forEach(segment => {
-        const [name, orientation = ""] = segment.split("=");
+        const [, name, orientation = ""] = /^(\w+)(?:=([\d\-.,]*))?$/.exec(segment) || [];
         if (names.bins.has(segment)) {
             result.bin = segment;
         }
         else if (names.overlays.has(segment)) {
             result.overlay = segment;
         }
-        else if (names.projections.has(name) && /^[\d\-.,]*$/.test(orientation)) {
+        else if (names.projections.has(name)) {
             result.projection = name;
             result.orientation = orientation;  // comma delimited string of numbers, or ""
         }
