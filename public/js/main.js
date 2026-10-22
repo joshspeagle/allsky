@@ -324,7 +324,6 @@ function createMask(globe) {
             return data[i + 3] > 0;  // non-zero alpha means pixel is visible
         },
         set(x, y, rgba) {
-            if (x >= width) return this;  // the second column of a 2x2 block can fall off the right edge
             const i = (y * width + x) * 4;
             data[i] = rgba[0];
             data[i + 1] = rgba[1];
@@ -444,7 +443,10 @@ function interpolateField(signal, globe, grids) {
                     }
                 }
                 column[y + 1] = column[y] = vector || HOLE_VECTOR;
-                mask.set(x, y, color).set(x + 1, y, color).set(x, y + 1, color).set(x + 1, y + 1, color);
+                mask.set(x, y, color).set(x, y + 1, color);
+                if (x < bounds.xMax) {  // the last column of an odd-width field has no second column
+                    mask.set(x + 1, y, color).set(x + 1, y + 1, color);
+                }
             }
         }
         columns[x + 1] = columns[x] = column;
@@ -753,7 +755,7 @@ function init() {
     configuration.on("change", changed => {
         // Build new grids for a new bin or overlay. A build replaces the one still running, so a quick switch
         // back to an overlay does not show the overlay of the earlier switch.
-        if (changed.includes("bin") || changed.includes("overlay") && configuration.get("overlay") !== "none") {
+        if (changed.includes("bin") || changed.includes("overlay")) {
             gridAgent.submit(buildGrids);
         }
     });
@@ -827,6 +829,7 @@ function init() {
     d3.select(window).on("resize", µ.debounce(() => {
         const {width, height} = µ.view();
         if (width !== view.width || height !== view.height) {
+            stopCurrentAnimation(true);
             sizeView();
             globeAgent.submit(buildGlobe, configuration.get("projection"));
         }
@@ -839,13 +842,25 @@ function init() {
 function sizeView() {
     view = µ.view();
     d3.selectAll(".fill-screen").attr("width", view.width).attr("height", view.height);
-    // Fill the width of the menu to the right of the label, which depends on the web font.
+    sizeColorBar();
+}
+
+/**
+ * Sizes the colour bar to fill the width of the menu to the right of its label, which depends on the web font.
+ */
+function sizeColorBar() {
     const label = d3.select("#scale-label").node();
-    d3.select("#scale")
-        .attr("width", (d3.select("#menu").node().offsetWidth - label.offsetWidth) * 0.97)
+    const bar = d3.select("#scale").style("display", "none");  // the menu fits its content: measure it without the bar
+    const menuWidth = d3.select("#menu").node().offsetWidth;
+    bar.style("display", null)
+        .attr("width", (menuWidth - label.offsetWidth) * 0.97)
         .attr("height", label.offsetHeight / 2);
 }
 
-// Once the web font has loaded (it sets the size of the colour bar) and everything is set up, load the
-// configuration from the hash fragment, which starts the change events.
-document.fonts.ready.then(init).then(() => configuration.fetch()).catch(report.error);
+// Once everything is set up, load the configuration from the hash fragment, which starts the change events.
+// When the web font has loaded, size the colour bar again and redraw it.
+Promise.resolve().then(init).then(() => configuration.fetch()).catch(report.error);
+document.fonts.load("1em mplus-2p-light-sub").then(() => {
+    sizeColorBar();
+    overlayAgent.submit(drawOverlay, fieldAgent.value(), configuration.get("overlay"));
+});

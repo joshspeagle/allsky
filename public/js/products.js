@@ -32,8 +32,9 @@ const LAYERS = {
                 [250, [255,255,204]]
             ])
         },
-        // Particles move velocityScale * (view height) pixels per frame for 1 km/s. Their colour is brightest at
-        // the speed that 95% of the grid's cells do not exceed (set when the grid loads).
+        // velocityScale * (view height) converts km/s to the screen velocity that streamStep (util.js) compresses
+        // into a particle's step. Particles are brightest at the speed that 95% of the grid's cells do not exceed
+        // (set when the grid loads).
         particles: {velocityScale: 1 / 60000, brightestQuantile: 0.95}
     },
     density: {
