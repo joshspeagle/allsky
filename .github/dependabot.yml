@@ -4,6 +4,10 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    ignore:
+      # CI runs in the Playwright image of the same version, and a new Chromium can change the pixel snapshots,
+      # so @playwright/test is updated by hand together with the image in .github/workflows/ci.yml.
+      - dependency-name: "@playwright/test"
     groups:
       # One pull request for all minor and patch updates; major updates come one by one.
       minor-and-patch:

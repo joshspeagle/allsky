@@ -44,6 +44,7 @@ The data files, the code and the URL hashes still use earth's weather names:
 - Test: `npm test`. It runs the Playwright regression tests in `tests/` against the dev server, in Chromium. Without the preinstalled browsers, run `npx playwright install chromium` once.
 - Update the test snapshots: `npx playwright test --update-snapshots`, only for an output change the lead approved. Check every changed file in `tests/snapshots/` before committing it.
 - CI (`.github/workflows/ci.yml`) runs the lint and the tests for every push to `master` and every pull request.
+- Dependabot opens monthly pull requests for npm packages and GitHub Actions. It skips `@playwright/test`: update it by hand together with the CI image, then run the tests and check any changed snapshot.
 
 ## Deployment
 
