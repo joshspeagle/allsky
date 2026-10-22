@@ -228,12 +228,17 @@ export function formatScalar(value, units) {
 }
 
 /**
- * Returns a human readable string for the provided rectangular vector in the given units.
+ * Returns a human readable string for the velocity vector [u, v, speed] in the given units: the direction of
+ * motion, in degrees from Galactic north (+b) toward increasing ℓ and rounded to 5 degrees, and the speed. A zero
+ * vector has no direction.
  */
 export function formatVector(vector, units) {
-    const d = Math.atan2(-vector[0], -vector[1]) / τ * 360;  // the direction the vector comes from, in degrees
-    const wd = Math.round((d + 360) % 360 / 5) * 5;  // shift [-180, 180] to [0, 360], and round to nearest 5.
-    return wd.toFixed(0) + "° @ " + formatScalar(vector[2], units);
+    const speed = formatScalar(vector[2], units);
+    if (vector[2] === 0) {
+        return speed;
+    }
+    const d = Math.atan2(vector[0], vector[1]) / τ * 360;
+    return Math.round((d + 360) % 360 / 5) * 5 % 360 + "° @ " + speed;
 }
 
 /**
