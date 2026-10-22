@@ -1,5 +1,5 @@
 /**
- * dev-server - serves static resources for developing "earth" locally
+ * dev-server - serves the static site in public/ for local development
  */
 
 "use strict";
@@ -10,6 +10,7 @@ console.log(new Date().toISOString() + " - Starting");
 var express = require("express");
 var compression = require("compression");
 var morgan = require("morgan");
+var path = require("path");
 
 /**
  * Returns true if the response should be compressed.
@@ -45,7 +46,7 @@ var app = express();
 app.use(cacheControl());
 app.use(compression({filter: compressionFilter}));
 app.use(morgan('combined'));
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, "public")));
 
 app.listen(port);
 console.log("Listening on port " + port + "...");
