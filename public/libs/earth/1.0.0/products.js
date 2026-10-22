@@ -6,7 +6,7 @@
  *
  * https://github.com/cambecc/earth
  */
-var products = function() {
+window.products = function() {
     "use strict";
 
     var WEATHER_PATH = "/data/weather";

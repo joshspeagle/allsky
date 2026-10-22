@@ -6,7 +6,7 @@
  *
  * https://github.com/cambecc/earth
  */
-var µ = function() {
+window.µ = function() {
     "use strict";
 
     var τ = 2 * Math.PI;

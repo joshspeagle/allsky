@@ -9,7 +9,7 @@ allsky is an animated all-sky map of the Milky Way's stars. It shows the mean ta
 - `public/libs/earth/1.0.0/`: the application code. `micro.js` holds utilities, the task agents and the URL hash configuration; `globes.js` the map projections; `products.js` the data layers, their colour scales and the grid interpolation; `earth.js` the page wiring, the interpolated field, the particle animation and the overlay.
 - `public/libs/`: other vendored libraries.
 - `public/data/weather/current/`: the data, one JSON file per quantity and distance bin, on a 1 degree grid in Galactic longitude and latitude.
-- `public/styles/`: the stylesheet and two subset fonts.
+- `public/styles/`: the stylesheet and its subset font.
 - `dev-server.js`: a local static server (Express) for `public/`.
 - `tests/`: the Playwright regression tests and their snapshots (`tests/snapshots/`).
 

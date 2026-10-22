@@ -22,11 +22,8 @@ module.exports = [
             sourceType: "script",
             globals: {
                 ...globals.browser, _: "readonly", Backbone: "readonly", d3: "readonly", when: "readonly",
-                µ: "writable", globes: "writable", products: "writable"
+                µ: "readonly", globes: "readonly", products: "readonly"
             }
-        },
-        // Each file defines one global (µ, globes, products) that the files after it read. These two rule options
-        // go when the files become ES modules (#19, step 5).
-        rules: { "no-redeclare": ["error", { builtinGlobals: false }], "no-unused-vars": ["error", { vars: "local" }] }
+        }
     }
 ];

@@ -201,16 +201,19 @@
 
     function buildGrids() {
         report.status("Downloading...");
-        log.time("build grids");
-        // UNDONE: upon failure to load a product, the unloaded product should still be stored in the agent.
-        //         this allows us to use the product for navigation and other state.
         var cancel = this.cancel;
-        var loaded = when.map(products.productsFor(configuration.attributes), function(product) {
+        var layers = products.productsFor(configuration.attributes);
+        if (layers.length === 0) {
+            return when.reject({status: 404, message: "No Data"});
+        }
+        log.time("build grids");
+        var loaded = when.map(layers, function(product) {
             return product.load(cancel);
         });
         return when.all(loaded).then(function(products) {
-            log.timeEnd("build grids");
             return {primaryGrid: products[0], overlayGrid: products[1] || products[0]};
+        }).ensure(function() {
+            log.timeEnd("build grids");
         });
     }
 
@@ -346,8 +349,8 @@
 
         /**
          * @returns {boolean} true if the point (x, y) lies inside the outer boundary of the vector field, even if
-         *          the vector field has a hole (is undefined) at that point, such as at an island in a field of
-         *          ocean currents.
+         *          the vector field has a hole (is undefined) at that point, such as at an unobserved region
+         *          of the sky.
          */
         field.isInsideBoundary = function(x, y) {
             return field(x, y) !== NULL_WIND_VECTOR;
