@@ -262,3 +262,10 @@ test("resizing the window redraws the map at the new size", async ({ page }) => 
     expect(sizes).toEqual(Array(4).fill(["800", "500"]));
     await expect(page).toHaveScreenshot("density-5-8-kpc-800x500.png");
 });
+
+test("the last pixel column of an odd-width view has a readout", async ({ page }) => {
+    await page.setViewportSize({ width: 961, height: 601 });
+    await openMap(page, hashFor("5-8kpc", "density", "equirectangular=-130.00,40.00,2000"));
+    const readout = await readoutAt(page, 960, 300);
+    expect(readout.coord).not.toBe("");
+});

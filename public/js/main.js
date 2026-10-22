@@ -324,6 +324,7 @@ function createMask(globe) {
             return data[i + 3] > 0;  // non-zero alpha means pixel is visible
         },
         set(x, y, rgba) {
+            if (x >= width) return this;  // the second column of a 2x2 block can fall off the right edge
             const i = (y * width + x) * 4;
             data[i] = rgba[0];
             data[i + 1] = rgba[1];
@@ -456,7 +457,7 @@ function interpolateField(signal, globe, grids) {
             try {
                 if (!signal.aborted) {
                     const start = Date.now();
-                    while (x < bounds.xMax) {
+                    while (x <= bounds.xMax) {
                         interpolateColumn(x);
                         x += 2;
                         if ((Date.now() - start) > MAX_TASK_TIME) {
