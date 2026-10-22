@@ -6,8 +6,8 @@ allsky is an animated all-sky map of the Milky Way's stars. It shows the mean ta
 
 - `public/`: the whole site. It is static, and a copy of it is the deployed site.
 - `public/index.html`: the page and its menu.
-- `public/libs/earth/1.0.0/`: the application code. `micro.js` holds utilities, the task agents and the URL hash configuration; `globes.js` the map projections; `products.js` the data layers, their colour scales and the grid interpolation; `earth.js` the page wiring, the interpolated field, the particle animation and the overlay.
-- `public/libs/`: other vendored libraries.
+- `public/js/`: the application code, as ES modules. `main.js` is the entry point: the page wiring, the interpolated field, the particle animation and the overlay. `configuration.js` holds the settings and their URL hash; `agent.js` runs the asynchronous tasks; `events.js` is the event emitter both build on; `globes.js` holds the map projections; `products.js` the data layers, their colour scales and the grid interpolation; `util.js` the helpers.
+- `public/libs/`: the vendored libraries, d3 and d3-geo-projection, which `index.html` loads as classic scripts before `main.js`. The modules read them as `window.d3`.
 - `public/data/weather/current/`: the data, one JSON file per quantity and distance bin, on a 1 degree grid in Galactic longitude and latitude.
 - `public/styles/`: the stylesheet and its subset font.
 - `dev-server.js`: a local static server (Express) for `public/`.
@@ -40,7 +40,7 @@ The data files, the code and the URL hashes still use earth's weather names:
 
 - Set up: `npm ci`. Node 20.19 or later.
 - Run: `node dev-server.js 8080`, then open http://localhost:8080.
-- Lint: `npm run lint` (ESLint, configured in `eslint.config.js`). It checks the Node scripts, `tests/` and the application code in `public/libs/earth/`.
+- Lint: `npm run lint` (ESLint, configured in `eslint.config.js`). It checks the Node scripts, `tests/` and the application code in `public/js/`.
 - Test: `npm test`. It runs the Playwright regression tests in `tests/` against the dev server, in Chromium. Without the preinstalled browsers, run `npx playwright install chromium` once.
 - Update the test snapshots: `npx playwright test --update-snapshots`, only for an output change the lead approved. Check every changed file in `tests/snapshots/` before committing it.
 - CI (`.github/workflows/ci.yml`) runs the lint and the tests for every push to `master` and every pull request.
@@ -114,13 +114,13 @@ The data files, the code and the URL hashes still use earth's weather names:
 - No no-ops, dead code, commented-out code, or new linter-ignore rules.
 - One purpose per function, one group of things per file. Add a helper only when it is reused or a function is too long.
 - Names are readable words. Symbols for coordinates may follow the math: `λ` and `φ` for Galactic longitude and latitude in degrees, `u` and `v` for the velocity components.
-- Vendored libraries are not edited. Update one by replacing it with the published file of a named version.
-- The site needs no build step: `public/` is what the browser loads.
+- Vendored libraries are not edited. Update one by replacing it with the published file of a named version, in a directory named after the version, with its licence.
+- The site needs no build step: `public/` is what the browser loads. Every path in it is relative, so the site works from any directory of a static host.
 
 ## Numerics and rendering
 
 - Coordinates are Galactic longitude `ℓ` and latitude `b` in degrees. Grids follow the earth layout: `lo1`, `la1` is the first grid point, longitude increases eastward from it and latitude decreases from it (scan mode 0).
-- The field is interpolated bilinearly on the grid, then corrected for the projection's local distortion with finite differences (`µ.distortion`).
+- The field is interpolated bilinearly on the grid, then corrected for the projection's local distortion with finite differences (`distortion` in `util.js`).
 - Stream speed on screen is deliberately non-linear in the velocity, so that the wide range of velocities stays visible.
 - Randomness (particle seeding) uses `Math.random`. Tests that compare pixels compare only deterministic layers, or seed it.
 
@@ -131,7 +131,7 @@ The data files, the code and the URL hashes still use earth's weather names:
 - Test contracts, invariants and regressions (each bug fix adds a test that fails without it). Do not test a library's behaviour.
 - Assert on values and pixels, never on wall-clock time.
 - The pixel snapshots come from Chromium on Linux, as in the CI image `mcr.microsoft.com/playwright:v1.56.1-noble`. On another platform, run the tests in that image.
-- The tests wait on `data-field-overlays` on the `<html>` element, which `earth.js` increments after it draws the overlay of a new field. A rewrite keeps this signal.
+- The tests wait on `data-field-overlays` on the `<html>` element, which `main.js` increments after it draws the overlay of a new field. A rewrite keeps this signal.
 - Name a test as a sentence that states the behaviour: `masked cells show no overlay colour`.
 
 ## Documentation

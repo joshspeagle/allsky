@@ -11,10 +11,10 @@
     <meta property="og:title"       content="allsky"/>
     <meta property="og:description" content="An animated map of Galactic motion."/>
 
-    <link rel="shortcut icon" href="/favicon.ico"/>
-    <link rel="apple-touch-icon" sizes="120x120" href="/iphone-icon.png"/>
-    <link rel="apple-touch-icon" sizes="152x152" href="/ipad-icon.png"/>
-    <link rel="stylesheet" type="text/css" href="/styles/styles.css"/>
+    <link rel="shortcut icon" href="favicon.ico"/>
+    <link rel="apple-touch-icon" sizes="120x120" href="iphone-icon.png"/>
+    <link rel="apple-touch-icon" sizes="152x152" href="ipad-icon.png"/>
+    <link rel="stylesheet" type="text/css" href="styles/styles.css"/>
 </head>
 <body>
 
@@ -34,11 +34,11 @@
             </p>
             <p>
                 <span id="location-wind"></span>
-                <span id="location-wind-units" class="text-button"></span>
+                <span id="location-wind-units"></span>
             </p>
             <p>
                 <span id="location-value"></span>
-                <span id="location-value-units" class="text-button"></span>
+                <span id="location-value-units"></span>
             </p>
         </div>
 
@@ -89,18 +89,9 @@
         </div>
     </div>
 
-    <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js" charset="utf-8"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.0/backbone-min.js" charset="utf-8"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.3.10/d3.min.js" charset="utf-8"></script>
-
-    <script src="/libs/d3.geo/0.0.0/d3.geo.projection.v0.min.js" charset="utf-8"></script>
-    <script src="/libs/d3.geo/0.0.0/d3.geo.polyhedron.v0.min.js" charset="utf-8"></script>
-    <script src="/libs/when/2.6.0/when.js" charset="utf-8"></script>
-
-    <script src="/libs/earth/1.0.0/micro.js" charset="utf-8"></script>
-    <script src="/libs/earth/1.0.0/globes.js" charset="utf-8"></script>
-    <script src="/libs/earth/1.0.0/products.js" charset="utf-8"></script>
-    <script src="/libs/earth/1.0.0/earth.js" charset="utf-8"></script>
+    <script src="libs/d3/7.9.0/d3.min.js" charset="utf-8"></script>
+    <script src="libs/d3-geo-projection/4.0.0/d3-geo-projection.min.js" charset="utf-8"></script>
+    <script type="module" src="js/main.js"></script>
 
 </body>
 </html>

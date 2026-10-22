@@ -1,28 +1,16 @@
 "use strict";
 
-const fs = require("fs");
-const path = require("path");
 const base = require("@playwright/test");
 
-const LIBS = path.join(__dirname, "..", "public", "libs");
-
-// index.html loads some libraries from cdnjs. Serve the vendored copies of the same versions instead, so tests
-// need no network.
-const CDN = /^https?:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/([^/]+)\/([^/]+)\/([^/]+?)(-min|\.min)?\.js$/;
-
 /**
- * The page fixture serves only local files, and fails the test if the page logs an error or throws.
+ * The page fixture blocks requests to other hosts, and fails the test if the page logs an error or throws.
  */
 const test = base.test.extend({
     page: async ({ page }, use) => {
         const errors = [];
         page.on("pageerror", e => errors.push(e.message));
         page.on("console", m => { if (m.type() === "error") errors.push(m.text()); });
-        await page.route(/^https?:\/\/(?!localhost)/, route => {
-            const m = CDN.exec(route.request().url());
-            const file = m && path.join(LIBS, m[1], m[2], m[3] + ".js");
-            return file && fs.existsSync(file) ? route.fulfill({ path: file }) : route.abort();
-        });
+        await page.route(/^https?:\/\/(?!localhost)/, route => route.abort());
         await use(page);
         base.expect(errors).toEqual([]);
     }

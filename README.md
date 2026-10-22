@@ -15,7 +15,7 @@ indebted. earth is itself based on the [Tokyo Wind Map](https://github.com/cambe
 Running it locally
 ------------------
 
-allsky is a static site: the browser loads `public/` and three libraries from cdnjs. To serve it locally, install
+allsky is a static site: everything the browser loads is in `public/`. To serve it locally, install
 [Node.js](https://nodejs.org/) 20.19 or later, then run:
 
     git clone https://github.com/joshspeagle/allsky
