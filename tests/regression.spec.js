@@ -68,7 +68,7 @@ test.describe("colour bars", () => {
                 }
                 return samples;
             });
-            expectProfile(`scale-${overlay}.json`, profile, 0);
+            expectProfile(`scale-${overlay}.json`, profile, 1);  // Chromium builds round the gradient by up to 1 level
         });
     }
 });
