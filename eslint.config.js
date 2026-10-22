@@ -4,7 +4,7 @@ const js = require("@eslint/js");
 const globals = require("globals");
 
 module.exports = [
-    { ignores: ["public/libs/*", "!public/libs/earth", "playwright-report", "test-results"] },
+    { ignores: ["public/libs", "playwright-report", "test-results"] },
     js.configs.recommended,
     {
         files: ["*.js", "tests/**/*.js"],
@@ -16,14 +16,7 @@ module.exports = [
         languageOptions: { globals: globals.browser }
     },
     {
-        files: ["public/libs/earth/**/*.js"],
-        languageOptions: {
-            ecmaVersion: 5,
-            sourceType: "script",
-            globals: {
-                ...globals.browser, _: "readonly", Backbone: "readonly", d3: "readonly", when: "readonly",
-                µ: "readonly", globes: "readonly", products: "readonly"
-            }
-        }
+        files: ["public/js/**/*.js"],
+        languageOptions: { sourceType: "module", globals: globals.browser }
     }
 ];
