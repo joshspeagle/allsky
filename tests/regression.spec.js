@@ -54,8 +54,7 @@ test.describe("map pixels", () => {
 });
 
 test.describe("colour bars", () => {
-    // The bar's width depends on whether the web font had loaded at start-up, so compare its colours at fixed
-    // fractions of its width, with a tolerance of one pixel's change in colour.
+    // Compare the bar's colours at fixed fractions of its width.
     for (const overlay of ["velocity", "density", "metallicity", "age"]) {
         test(`${overlay} colour bar matches its snapshot`, async ({ page }) => {
             await openMap(page, hashFor("5-8kpc", overlay));
@@ -69,7 +68,7 @@ test.describe("colour bars", () => {
                 }
                 return samples;
             });
-            expectProfile(`scale-${overlay}.json`, profile, 6);
+            expectProfile(`scale-${overlay}.json`, profile, 0);
         });
     }
 });
@@ -252,4 +251,14 @@ test.describe("overlay switching", () => {
         });
         expect(painted).toBe(false);
     });
+});
+
+test("resizing the window redraws the map at the new size", async ({ page }) => {
+    await openMap(page, hashFor("5-8kpc", "density"));
+    const draws = await overlayDraws(page);
+    await page.setViewportSize({ width: 800, height: 500 });
+    await waitForOverlayDraw(page, draws);
+    const sizes = await page.$$eval(".fill-screen", els => els.map(e => [e.getAttribute("width"), e.getAttribute("height")]));
+    expect(sizes).toEqual(Array(4).fill(["800", "500"]));
+    await expect(page).toHaveScreenshot("density-5-8-kpc-800x500.png");
 });

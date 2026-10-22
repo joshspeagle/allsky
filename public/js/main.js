@@ -22,6 +22,7 @@ const MIN_SLEEP_TIME = 25;                  // amount of time a task waits befor
 const MIN_MOVE = 4;                         // slack before a drag operation beings (pixels)
 const MOVE_END_WAIT = 1000;                 // time to wait for a move operation to be considered done (millis)
 const REDRAW_WAIT = 5;                      // time to wait between redraws of the map during a move (millis)
+const RESIZE_WAIT = 250;                    // time to wait for the window to stop changing size (millis)
 
 const OVERLAY_ALPHA = Math.floor(0.75 * 255);  // overlay transparency (on scale [0, 255])
 const INTENSITY_SCALE_STEP = 10;            // step size of particle intensity color scale
@@ -717,12 +718,7 @@ function bindButtonToConfiguration(element, newAttr, keys = Object.keys(newAttr)
 function init() {
     report.status("Initializing...");
 
-    d3.selectAll(".fill-screen").attr("width", view.width).attr("height", view.height);
-    // Adjust size of the scale canvas to fill the width of the menu to the right of the label.
-    const label = d3.select("#scale-label").node();
-    d3.select("#scale")
-        .attr("width", (d3.select("#menu").node().offsetWidth - label.offsetWidth) * 0.97)
-        .attr("height", label.offsetHeight / 2);
+    sizeView();
 
     d3.select("#show-menu").on("click", () => {
         if (µ.isEmbeddedInIFrame()) {
@@ -830,12 +826,26 @@ function init() {
         bindButtonToConfiguration(this, {projection: this.dataset.projection, orientation: ""}, ["projection"]);
     });
 
-    // When touch device changes between portrait and landscape, rebuild globe using the new view size.
-    d3.select(window).on("orientationchange", () => {
-        view = µ.view();
+    // When the window changes size (or a touch device turns), rebuild the globe for the new view.
+    d3.select(window).on("resize", µ.debounce(() => {
+        sizeView();
         globeAgent.submit(buildGlobe, configuration.get("projection"));
-    });
+    }, RESIZE_WAIT));
 }
 
-// Once everything is set up, load the configuration from the hash fragment, which starts the change events.
-Promise.resolve().then(init).then(() => configuration.fetch()).catch(report.error);
+/**
+ * Sizes the canvases and the SVG elements to the window, and the colour bar to the menu.
+ */
+function sizeView() {
+    view = µ.view();
+    d3.selectAll(".fill-screen").attr("width", view.width).attr("height", view.height);
+    // Fill the width of the menu to the right of the label, which depends on the web font.
+    const label = d3.select("#scale-label").node();
+    d3.select("#scale")
+        .attr("width", (d3.select("#menu").node().offsetWidth - label.offsetWidth) * 0.97)
+        .attr("height", label.offsetHeight / 2);
+}
+
+// Once the web font has loaded (it sets the size of the colour bar) and everything is set up, load the
+// configuration from the hash fragment, which starts the change events.
+document.fonts.ready.then(init).then(() => configuration.fetch()).catch(report.error);
