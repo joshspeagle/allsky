@@ -14,7 +14,7 @@ Part of #
 
 ## Deployment
 
-<!-- Does the lead need to upload public/ to S3 for this change to reach the live site? Write "No change to public/" if not. -->
+<!-- Does this change what the live site loads? A merge to master deploys public/. Write "No change to public/" if not. -->
 
 ## Testing
 
