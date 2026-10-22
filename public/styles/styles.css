@@ -7,11 +7,6 @@
     src: url("/styles/mplus-2p-light-sub.ttf?v6");
 }
 
-@font-face {
-    font-family: monosocialiconsfont-sub;
-    src: url("/styles/monosocialiconsfont-sub.ttf?v1");
-}
-
 /**************************************************************************************************
  * Styling Reset
  **************************************************************************************************/
@@ -42,10 +37,6 @@ a, .text-button {
     color: #e2b42e;
 }
 
-.text-button.disabled {
-    color: #444444;
-}
-
 a:hover, a:focus, .no-touch .text-button:hover, .no-touch .text-button:focus, .text-button:active {
     color: #ffffff;
     cursor: pointer;
@@ -53,7 +44,7 @@ a:hover, a:focus, .no-touch .text-button:hover, .no-touch .text-button:focus, .t
     -webkit-transition: color 125ms ease-in;
 }
 
-p.invisible, span.invisible, #sponsor.invisible {
+p.invisible, span.invisible {
     display: none;
 }
 
@@ -66,13 +57,6 @@ body {
     background: #000005;
 }
 
-#warn {
-    font-size: 2.0em;
-    position: absolute;
-    top: 10%;
-    left: 2%;
-}
-
 #display {
     cursor: default;
 }
@@ -82,25 +66,6 @@ body {
     top: 0;
     left: 0;
     will-change: transform;
-}
-
-#sponsor {
-    position: absolute;
-    text-align: right;
-    bottom: 3%;
-    right: 2%;
-    background-color: rgba(0, 0, 5, 0.6);
-    border-radius: 0.5rem/0.5rem;
-    padding: 0.5rem 1rem 0.5rem 1rem;
-    font-size: 1.0rem;
-}
-
-#sponsor:hover #sponsor-hide {
-    display: inline;
-}
-
-#sponsor a {
-    text-decoration: none;
 }
 
 #details {
@@ -154,64 +119,14 @@ body {
     padding-left: 1rem;
 }
 
-#nav-now {
-    padding-right: 1rem;
-}
-
-#nav-backward, #nav-backward-more, #nav-forward, #nav-forward-more, #option-show-grid {
+#option-show-grid {
     padding-left: 1rem;
     padding-right: 1rem;
-}
-
-#show-location {
-    padding-left: 0.25rem;
-    padding-right: 0.25rem;
-}
-
-#lang {
-    font-size: 1.25rem;
-    float: right;
-    padding-top: 0.5rem;
-}
-
-.social-icon {
-    font-size: 2.25rem;
-    font-family: monosocialiconsfont-sub,sans-serif;
-    padding-left: 0.25rem;
-    text-decoration: none;
-    position: relative;
-    top: 0.1rem;
-}
-
-.internal-link {
-    text-decoration: none;
-}
-
-.sup {
-    position: relative;
-   	bottom: 0.3em;
-   	font-size: 0.6em;
-}
-
-.sub {
-    position: relative;
-   	top: 0.3em;
-   	font-size: 0.6em;
 }
 
 /**************************************************************************************************
  * SVG Element Styling
  **************************************************************************************************/
-
-.coastline, .lakes {
-    stroke: #ffffff;
-    stroke-width: 1.25;
-    fill: none;
-}
-
-.firefox .coastline, .firefox .lakes {
-    stroke-width: 1.0;
-}
 
 .graticule {
     stroke: #505050;
@@ -242,67 +157,4 @@ body {
     stroke: #3aff3a;
     stroke-width: 2.5;
     fill: none;
-}
-
-/**************************************************************************************************
- * About Page
- **************************************************************************************************/
-
-#about {
-    font-size: 1.5rem;
-}
-
-#about h1 {
-    font-size: 2.4rem;
-    text-align: center;
-    padding-top: 2rem;
-}
-
-#about div {
-    clear: both;
-}
-
-#about .blurb {
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-}
-
-#about .blurb img {
-    padding-top: 2rem;
-}
-
-#about img {
-    display: block;
-    margin: auto;
-}
-
-#about:first-child {
-    padding-top: 3rem;
-}
-
-#cover {
-    border: 1px solid #eeeeee;
-}
-
-#about .left {
-    width: 50%;
-    float: left;
-    text-align: right;
-}
-
-#about .right {
-    width: 50%;
-    float: right;
-}
-
-#about .center {
-    text-align: center;
-}
-
-#about .pad {
-    visibility: hidden;
-}
-
-#closing {
-    padding-bottom: 2.5rem;
 }

@@ -9,7 +9,7 @@ allsky is an animated all-sky map of the Milky Way's stars. It shows the mean ta
 - `public/libs/earth/1.0.0/`: the application code. `micro.js` holds utilities, the task agents and the URL hash configuration; `globes.js` the map projections; `products.js` the data layers, their colour scales and the grid interpolation; `earth.js` the page wiring, the interpolated field, the particle animation and the overlay.
 - `public/libs/`: other vendored libraries.
 - `public/data/weather/current/`: the data, one JSON file per quantity and distance bin, on a 1 degree grid in Galactic longitude and latitude.
-- `public/styles/`: the stylesheet and two subset fonts.
+- `public/styles/`: the stylesheet and its subset font.
 - `dev-server.js`: a local static server (Express) for `public/`.
 - `tests/`: the Playwright regression tests and their snapshots (`tests/snapshots/`).
 
@@ -40,7 +40,7 @@ The data files, the code and the URL hashes still use earth's weather names:
 
 - Set up: `npm ci`. Node 20.19 or later.
 - Run: `node dev-server.js 8080`, then open http://localhost:8080.
-- Lint: `npm run lint` (ESLint, configured in `eslint.config.js`). It checks the Node scripts and `tests/`; `public/` is not linted yet.
+- Lint: `npm run lint` (ESLint, configured in `eslint.config.js`). It checks the Node scripts, `tests/` and the application code in `public/libs/earth/`.
 - Test: `npm test`. It runs the Playwright regression tests in `tests/` against the dev server, in Chromium. Without the preinstalled browsers, run `npx playwright install chromium` once.
 - Update the test snapshots: `npx playwright test --update-snapshots`, only for an output change the lead approved. Check every changed file in `tests/snapshots/` before committing it.
 - CI (`.github/workflows/ci.yml`) runs the lint and the tests for every push to `master` and every pull request.

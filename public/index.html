@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html itemscope itemtype="http://schema.org/Map" prefix="og: http://ogp.me/ns# fb: http://ogp.me/ns/fb#">
+<html itemscope itemtype="http://schema.org/Map" prefix="og: http://ogp.me/ns#">
 <head>
     <meta charset="utf-8"/>
     <title>allsky :: an animated map of Galactic motion</title>
@@ -10,15 +10,13 @@
     <meta property="og:type"        content="website"/>
     <meta property="og:title"       content="allsky"/>
     <meta property="og:description" content="An animated map of Galactic motion."/>
-    <meta property="og:url"         content="http://earth.nullschool.net"/>
-    <meta property="og:image"       content="http://earth.nullschool.net/preview.jpg"/>
 
     <link rel="shortcut icon" href="/favicon.ico"/>
     <link rel="apple-touch-icon" sizes="120x120" href="/iphone-icon.png"/>
     <link rel="apple-touch-icon" sizes="152x152" href="/ipad-icon.png"/>
     <link rel="stylesheet" type="text/css" href="/styles/styles.css"/>
 </head>
-<body data-lang="en">
+<body>
 
     <div id="display">
         <svg id="map" class="fill-screen" xmlns="http://www.w3.org/2000/svg" version="1.1"></svg>
@@ -50,7 +48,7 @@
         </p>
 
         <div id="menu" class="invisible">
-            <p class="wind-mode">Distance | <span
+            <p>Distance | <span
                 class="surface text-button" id="isobaric-250hPa">0-2</span> / <span
                 class="surface text-button" id="isobaric-1000hPa">1-3</span> / <span
                 class="surface text-button" id="isobaric-850hPa">2-4</span> / <span
@@ -61,7 +59,7 @@
                 class="surface text-button" id="isobaric-20hPa">13-25</span> / <span
                 class="surface text-button" id="isobaric-10hPa">20-50</span> kpc
             </p>
-            <p class="wind-mode">Overlay | <span
+            <p>Overlay | <span
                 class="text-button" id="overlay-off">None</span> – <span
                 class="text-button" id="overlay-wind" title="Mean Tangential Velocity">Velocity</span> – <span
                 class="text-button" id="overlay-temp" title="Total Stellar Density">Density</span> – <span
@@ -85,7 +83,7 @@
 
             <p>Release | Augustus I </p>
             <p>Data | <a href="https://panstarrs.stsci.edu/">PanSTARRS1</a> / <a href="https://old.ipac.caltech.edu/2mass/">2MASS</a> / <a href="http://www.ukidss.org/">UKIDSS</a> / <a href="http://catalog.unwise.me/">unWISE</a> / <a href="https://sci.esa.int/web/gaia">Gaia</a></p>
-            <p>Source Code | <a href="https://github.com/joshspeagle/brutus">brutus</a> / <a href="https://github.com/joshspeagle/allsky">allsky</a> <span id="data-date" class="invisible"></span></p>
+            <p>Source Code | <a href="https://github.com/joshspeagle/brutus">brutus</a> / <a href="https://github.com/joshspeagle/allsky">allsky</a></p>
 
 
         </div>
@@ -93,7 +91,6 @@
 
     <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js" charset="utf-8"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.0/backbone-min.js" charset="utf-8"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/topojson/1.1.0/topojson.min.js" charset="utf-8"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.3.10/d3.min.js" charset="utf-8"></script>
 
     <script src="/libs/d3.geo/0.0.0/d3.geo.projection.v0.min.js" charset="utf-8"></script>

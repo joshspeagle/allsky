@@ -6,19 +6,11 @@
  *
  * https://github.com/cambecc/earth
  */
-var globes = function() {
+window.globes = function() {
     "use strict";
 
-    /**
-     * @returns {Array} rotation of globe to current position of the user. Aside from asking for geolocation,
-     *          which user may reject, there is not much available except timezone. Better than nothing.
-     */
-    function currentPosition() {
-//         var λ = µ.floorMod(new Date().getTimezoneOffset() / 4, 360);  // 24 hours * 60 min / 4 === 360 degrees
-        // deemphasize panstarrs footprint
-        var λ = 230;
-        return [λ, 0];
-    }
+    // The default rotation of the globe, which turns the PanSTARRS footprint away from the center.
+    var DEFAULT_ROTATION = [230, 0];
 
     function ensureNumber(num, fallback) {
         return _.isFinite(num) || num === Infinity || num === -Infinity ? num : fallback;
@@ -51,10 +43,10 @@ var globes = function() {
             projection: null,
 
             /**
-             * @param view the size of the view as {width:, height:}.
+             * Overrides take the size of the view as {width:, height:}.
              * @returns {Object} a new D3 projection of this globe appropriate for the specified view port.
              */
-            newProjection: function(view) {
+            newProjection: function() {
                 throw new Error("method must be overridden");
             },
 
@@ -146,13 +138,6 @@ var globes = function() {
             },
 
             /**
-             * @returns {Array} the transform to apply, if any, to orient this globe to the specified coordinates.
-             */
-            locate: function(coord) {
-                return null;
-            },
-
-            /**
              * Draws a polygon on the specified context of this globe's boundary.
              * @param context a Canvas element's 2d context.
              * @returns the context
@@ -185,10 +170,6 @@ var globes = function() {
                     .attr("class", "hemisphere")
                     .datum(d3.geo.graticule().minorStep([0, 90]).majorStep([0, 90]))
                     .attr("d", path);
-                mapSvg.append("path")
-                    .attr("class", "coastline");
-                mapSvg.append("path")
-                    .attr("class", "lakes");
                 foregroundSvg.append("use")
                     .attr("xlink:href", "#sphere")
                     .attr("class", "foreground-sphere");
@@ -207,8 +188,7 @@ var globes = function() {
     function atlantis() {
         return newGlobe({
             newProjection: function() {
-//                 return d3.geo.mollweide().rotate([30, -45, 90]).precision(0.1);
-                return d3.geo.mollweide().rotate([230, 0, 0]).precision(0.1);
+                return d3.geo.mollweide().rotate(DEFAULT_ROTATION).precision(0.1);
             }
         });
     }
@@ -224,7 +204,7 @@ var globes = function() {
     function conicEquidistant() {
         return newGlobe({
             newProjection: function() {
-                return d3.geo.conicEquidistant().rotate(currentPosition()).precision(0.1);
+                return d3.geo.conicEquidistant().rotate(DEFAULT_ROTATION).precision(0.1);
             },
             center: function(view) {
                 return [view.width / 2, view.height / 2 + view.height * 0.065];
@@ -235,7 +215,7 @@ var globes = function() {
     function equirectangular() {
         return newGlobe({
             newProjection: function() {
-                return d3.geo.equirectangular().rotate(currentPosition()).precision(0.1);
+                return d3.geo.equirectangular().rotate(DEFAULT_ROTATION).precision(0.1);
             }
         });
     }
@@ -243,7 +223,7 @@ var globes = function() {
     function orthographic() {
         return newGlobe({
             newProjection: function() {
-                return d3.geo.orthographic().rotate(currentPosition()).precision(0.1).clipAngle(90);
+                return d3.geo.orthographic().rotate(DEFAULT_ROTATION).precision(0.1).clipAngle(90);
             },
             defineMap: function(mapSvg, foregroundSvg) {
                 var path = d3.geo.path().projection(this.projection);
@@ -270,16 +250,9 @@ var globes = function() {
                     .attr("class", "hemisphere")
                     .datum(d3.geo.graticule().minorStep([0, 90]).majorStep([0, 90]))
                     .attr("d", path);
-                mapSvg.append("path")
-                    .attr("class", "coastline");
-                mapSvg.append("path")
-                    .attr("class", "lakes");
                 foregroundSvg.append("use")
                     .attr("xlink:href", "#sphere")
                     .attr("class", "foreground-sphere");
-            },
-            locate: function(coord) {
-                return [-coord[0], -coord[1], this.projection.rotate()[2]];
             }
         });
     }
@@ -320,12 +293,6 @@ var globes = function() {
                     .attr("clip-path", "url(#clip)")
                     .datum(d3.geo.graticule())
                     .attr("d", path);
-                mapSvg.append("path")
-                    .attr("class", "coastline")
-                    .attr("clip-path", "url(#clip)");
-                mapSvg.append("path")
-                    .attr("class", "lakes")
-                    .attr("clip-path", "url(#clip)");
                 foregroundSvg.append("use")
                     .attr("xlink:href", "#sphere")
                     .attr("class", "foreground-sphere");

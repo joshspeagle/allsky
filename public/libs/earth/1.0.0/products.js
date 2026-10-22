@@ -1,30 +1,19 @@
 /**
- * products - defines the behavior of weather data grids, including grid construction, interpolation, and color scales.
+ * products - defines the data layers, including grid construction, interpolation, and color scales.
  *
  * Copyright (c) 2014 Cameron Beccario
  * The MIT License - http://opensource.org/licenses/MIT
  *
  * https://github.com/cambecc/earth
  */
-var products = function() {
+window.products = function() {
     "use strict";
 
     var WEATHER_PATH = "/data/weather";
-    var OSCAR_PATH = "/data/oscar";
-    var catalogs = {
-        // The OSCAR catalog is an array of file names, sorted and prefixed with yyyyMMdd. Last item is the
-        // most recent. For example: [ 20140101-abc.json, 20140106-abc.json, 20140112-abc.json, ... ]
-        oscar: µ.loadJson([OSCAR_PATH, "catalog.json"].join("/"))
-    };
 
     function buildProduct(overrides) {
         return _.extend({
-            description: "",
             paths: [],
-            date: null,
-            navigate: function(step) {
-                return gfsStep(this.date, step);
-            },
             load: function(cancel) {
                 var me = this;
                 return when.map(this.paths, µ.loadJson).then(function(files) {
@@ -47,80 +36,14 @@ var products = function() {
         return [WEATHER_PATH, dir, file].join("/");
     }
 
-    function gfsDate(attr) {
-        if (attr.date === "current") {
-            // Construct the date from the current time, rounding down to the nearest three-hour block.
-            var now = new Date(Date.now()), hour = Math.floor(now.getUTCHours() / 3);
-            return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hour));
-        }
-        var parts = attr.date.split("/");
-        return new Date(Date.UTC(+parts[0], parts[1] - 1, +parts[2], +attr.hour.substr(0, 2)));
-    }
-
-    /**
-     * Returns a date for the chronologically next or previous GFS data layer. How far forward or backward in time
-     * to jump is determined by the step. Steps of ±1 move in 3-hour jumps, and steps of ±10 move in 24-hour jumps.
-     */
-    function gfsStep(date, step) {
-        var offset = (step > 1 ? 8 : step < -1 ? -8 : step) * 3, adjusted = new Date(date);
-        adjusted.setHours(adjusted.getHours() + offset);
-        return adjusted;
-    }
-
-    function netcdfHeader(time, lat, lon, center) {
-        return {
-            lo1: lon.sequence.start,
-            la1: lat.sequence.start,
-            dx: lon.sequence.delta,
-            dy: -lat.sequence.delta,
-            nx: lon.sequence.size,
-            ny: lat.sequence.size,
-            refTime: time.data[0],
-            forecastTime: 0,
-            centerName: center
-        };
-    }
-
-    function describeSurface(attr) {
-        return attr.surface === "surface" ? "Surface" : µ.capitalize(attr.level);
-    }
-
-    function describeSurfaceJa(attr) {
-        return attr.surface === "surface" ? "地上" : µ.capitalize(attr.level);
-    }
-
-    /**
-     * Returns a function f(langCode) that, given table:
-     *     {foo: {en: "A", ja: "あ"}, bar: {en: "I", ja: "い"}}
-     * will return the following when called with "en":
-     *     {foo: "A", bar: "I"}
-     * or when called with "ja":
-     *     {foo: "あ", bar: "い"}
-     */
-    function localize(table) {
-        return function(langCode) {
-            var result = {};
-            _.each(table, function(value, key) {
-                result[key] = value[langCode] || value.en || value;
-            });
-            return result;
-        }
-    }
-
     var FACTORIES = {
 
         "wind": {
             matches: _.matches({param: "wind"}),
             create: function(attr) {
                 return buildProduct({
-                    field: "vector",
                     type: "wind",
-                    description: localize({
-                        name: {en: "Wind", ja: "風速"},
-                        qualifier: {en: " @ " + describeSurface(attr), ja: " @ " + describeSurfaceJa(attr)}
-                    }),
                     paths: [gfs1p0degPath(attr, "wind", attr.surface, attr.level)],
-                    date: gfsDate(attr),
                     builder: function(file) {
                         var uData = file[0].data, vData = file[1].data;
                         return {
@@ -157,14 +80,8 @@ var products = function() {
             matches: _.matches({param: "wind", overlayType: "temp"}),
             create: function(attr) {
                 return buildProduct({
-                    field: "scalar",
                     type: "temp",
-                    description: localize({
-                        name: {en: "Temp", ja: "気温"},
-                        qualifier: {en: " @ " + describeSurface(attr), ja: " @ " + describeSurfaceJa(attr)}
-                    }),
                     paths: [gfs1p0degPath(attr, "temp", attr.surface, attr.level)],
-                    date: gfsDate(attr),
                     builder: function(file) {
                         var record = file[0], data = record.data;
                         return {
@@ -211,14 +128,8 @@ var products = function() {
             matches: _.matches({param: "wind", overlayType: "relative_humidity"}),
             create: function(attr) {
                 return buildProduct({
-                    field: "scalar",
                     type: "relative_humidity",
-                    description: localize({
-                        name: {en: "Relative Humidity", ja: "相対湿度"},
-                        qualifier: {en: " @ " + describeSurface(attr), ja: " @ " + describeSurfaceJa(attr)}
-                    }),
                     paths: [gfs1p0degPath(attr, "relative_humidity", attr.surface, attr.level)],
-                    date: gfsDate(attr),
                     builder: function(file) {
                         var record = file[0], data = record.data;
                         return {
@@ -265,14 +176,8 @@ var products = function() {
             matches: _.matches({param: "wind", overlayType: "air_density"}),
             create: function(attr) {
                 return buildProduct({
-                    field: "scalar",
                     type: "air_density",
-                    description: localize({
-                        name: {en: "Air Density", ja: "空気密度"},
-                        qualifier: {en: " @ " + describeSurface(attr), ja: " @ " + describeSurfaceJa(attr)}
-                    }),
                     paths: [gfs1p0degPath(attr, "air_density", attr.surface, attr.level)],
-                    date: gfsDate(attr),
                     builder: function(file) {
                         var record = file[0], data = record.data;
                         return {
@@ -314,232 +219,6 @@ var products = function() {
             }
         },
 
-        "wind_power_density": {
-            matches: _.matches({param: "wind", overlayType: "wind_power_density"}),
-            create: function(attr) {
-                var windProduct = FACTORIES.wind.create(attr);
-                var airdensProduct = FACTORIES.air_density.create(attr);
-                return buildProduct({
-                    field: "scalar",
-                    type: "wind_power_density",
-                    description: localize({
-                        name: {en: "Wind Power Density", ja: "風力エネルギー密度"},
-                        qualifier: {en: " @ " + describeSurface(attr), ja: " @ " + describeSurfaceJa(attr)}
-                    }),
-                    paths: [windProduct.paths[0], airdensProduct.paths[0]],
-                    date: gfsDate(attr),
-                    builder: function(windFile, airdensFile) {
-                        var windBuilder = windProduct.builder(windFile);
-                        var airdensBuilder = airdensProduct.builder(airdensFile);
-                        var windData = windBuilder.data, windInterpolate = windBuilder.interpolate;
-                        var airdensData = airdensBuilder.data, airdensInterpolate = airdensBuilder.interpolate;
-                        return {
-                            header: _.clone(airdensBuilder.header),
-                            interpolate: function(x, y, g00, g10, g01, g11) {
-                                var m = windInterpolate(x, y, g00[0], g10[0], g01[0], g11[0])[2];
-                                var ρ = airdensInterpolate(x, y, g00[1], g10[1], g01[1], g11[1]);
-                                return 0.5 * ρ * m * m * m;
-                            },
-                            data: function(i) {
-                                return [windData(i), airdensData(i)];
-                            }
-                        };
-                    },
-                    units: [
-                        {label: "kW/m²", conversion: function(x) { return x / 1000; }, precision: 1},
-                        {label: "W/m²", conversion: function(x) { return x; }, precision: 0}
-                    ],
-                    scale: {
-                        bounds: [0, 80000],
-                        gradient: µ.segmentedColorScale([
-                            [0, [15, 4, 96]],
-                            [250, [30, 8, 180]],
-                            [1000, [121, 102, 2]],
-                            [2000, [118, 161, 66]],
-                            [4000, [50, 102, 219]],
-                            [8000, [19, 131, 193]],
-                            [16000, [59, 204, 227]],
-                            [64000, [241, 1, 45]],
-                            [80000, [243, 0, 241]]
-                        ])
-                    }
-                });
-            }
-        },
-
-        "total_cloud_water": {
-            matches: _.matches({param: "wind", overlayType: "total_cloud_water"}),
-            create: function(attr) {
-                return buildProduct({
-                    field: "scalar",
-                    type: "total_cloud_water",
-                    description: localize({
-                        name: {en: "Total Cloud Water", ja: "雲水量"},
-                        qualifier: ""
-                    }),
-                    paths: [gfs1p0degPath(attr, "total_cloud_water")],
-                    date: gfsDate(attr),
-                    builder: function(file) {
-                        var record = file[0], data = record.data;
-                        return {
-                            header: record.header,
-                            interpolate: bilinearInterpolateScalar,
-                            data: function(i) {
-                                return data[i];
-                            }
-                        }
-                    },
-                    units: [
-                        {label: "kg/m²", conversion: function(x) { return x; }, precision: 3}
-                    ],
-                    scale: {
-                        bounds: [0, 1],
-                        gradient: µ.segmentedColorScale([
-                            [0.0, [5, 5, 89]],
-                            [0.2, [170, 170, 230]],
-                            [1.0, [255, 255, 255]]
-                        ])
-                    }
-                });
-            }
-        },
-
-        "total_precipitable_water": {
-            matches: _.matches({param: "wind", overlayType: "total_precipitable_water"}),
-            create: function(attr) {
-                return buildProduct({
-                    field: "scalar",
-                    type: "total_precipitable_water",
-                    description: localize({
-                        name: {en: "Total Precipitable Water", ja: "可降水量"},
-                        qualifier: ""
-                    }),
-                    paths: [gfs1p0degPath(attr, "total_precipitable_water")],
-                    date: gfsDate(attr),
-                    builder: function(file) {
-                        var record = file[0], data = record.data;
-                        return {
-                            header: record.header,
-                            interpolate: bilinearInterpolateScalar,
-                            data: function(i) {
-                                return data[i];
-                            }
-                        }
-                    },
-                    units: [
-                        {label: "kg/m²", conversion: function(x) { return x; }, precision: 3}
-                    ],
-                    scale: {
-                        bounds: [0, 70],
-                        gradient:
-                            µ.segmentedColorScale([
-                                [0, [230, 165, 30]],
-                                [10, [120, 100, 95]],
-                                [20, [40, 44, 92]],
-                                [30, [21, 13, 193]],
-                                [40, [75, 63, 235]],
-                                [60, [25, 255, 255]],
-                                [70, [150, 255, 255]]
-                            ])
-                    }
-                });
-            }
-        },
-
-        "mean_sea_level_pressure": {
-            matches: _.matches({param: "wind", overlayType: "mean_sea_level_pressure"}),
-            create: function(attr) {
-                return buildProduct({
-                    field: "scalar",
-                    type: "mean_sea_level_pressure",
-                    description: localize({
-                        name: {en: "Mean Sea Level Pressure", ja: "海面更正気圧"},
-                        qualifier: ""
-                    }),
-                    paths: [gfs1p0degPath(attr, "mean_sea_level_pressure")],
-                    date: gfsDate(attr),
-                    builder: function(file) {
-                        var record = file[0], data = record.data;
-                        return {
-                            header: record.header,
-                            interpolate: bilinearInterpolateScalar,
-                            data: function(i) {
-                                return data[i];
-                            }
-                        }
-                    },
-                    units: [
-                        {label: "hPa", conversion: function(x) { return x / 100; }, precision: 0},
-                        {label: "mmHg", conversion: function(x) { return x / 133.322387415; }, precision: 0},
-                        {label: "inHg", conversion: function(x) { return x / 3386.389; }, precision: 1}
-                    ],
-                    scale: {
-                        bounds: [92000, 105000],
-                        gradient: µ.segmentedColorScale([
-                            [92000, [40, 0, 0]],
-                            [95000, [187, 60, 31]],
-                            [96500, [137, 32, 30]],
-                            [98000, [16, 1, 43]],
-                            [100500, [36, 1, 93]],
-                            [101300, [241, 254, 18]],
-                            [103000, [228, 246, 223]],
-                            [105000, [255, 255, 255]]
-                        ])
-                    }
-                });
-            }
-        },
-
-        "currents": {
-            matches: _.matches({param: "ocean", surface: "surface", level: "currents"}),
-            create: function(attr) {
-                return when(catalogs.oscar).then(function(catalog) {
-                    return buildProduct({
-                        field: "vector",
-                        type: "currents",
-                        description: localize({
-                            name: {en: "Ocean Currents", ja: "海流"},
-                            qualifier: {en: " @ Surface", ja: " @ 地上"}
-                        }),
-                        paths: [oscar0p33Path(catalog, attr)],
-                        date: oscarDate(catalog, attr),
-                        navigate: function(step) {
-                            return oscarStep(catalog, this.date, step);
-                        },
-                        builder: function(file) {
-                            var uData = file[0].data, vData = file[1].data;
-                            return {
-                                header: file[0].header,
-                                interpolate: bilinearInterpolateVector,
-                                data: function(i) {
-                                    var u = uData[i], v = vData[i];
-                                    return µ.isValue(u) && µ.isValue(v) ? [u, v] : null;
-                                }
-                            }
-                        },
-                        units: [
-                            {label: "m/s",  conversion: function(x) { return x; },            precision: 2},
-                            {label: "km/h", conversion: function(x) { return x * 3.6; },      precision: 1},
-                            {label: "kn",   conversion: function(x) { return x * 1.943844; }, precision: 1},
-                            {label: "mph",  conversion: function(x) { return x * 2.236936; }, precision: 1}
-                        ],
-                        scale: {
-                            bounds: [0, 1.5],
-                            gradient: µ.segmentedColorScale([
-                                [0, [10, 25, 68]],
-                                [0.15, [10, 25, 250]],
-                                [0.4, [24, 255, 93]],
-                                [0.65, [255, 233, 102]],
-                                [1.0, [255, 233, 15]],
-                                [1.5, [255, 15, 15]]
-                            ])
-                        },
-                        particles: {velocityScale: 1/4400, maxIntensity: 0.7}
-                    });
-                });
-            }
-        },
-
         "off": {
             matches: _.matches({overlayType: "off"}),
             create: function() {
@@ -547,66 +226,6 @@ var products = function() {
             }
         }
     };
-
-    /**
-     * Returns the file name for the most recent OSCAR data layer to the specified date. If offset is non-zero,
-     * the file name that many entries from the most recent is returned.
-     *
-     * The result is undefined if there is no entry for the specified date and offset can be found.
-     *
-     * UNDONE: the catalog object itself should encapsulate this logic. GFS can also be a "virtual" catalog, and
-     *         provide a mechanism for eliminating the need for /data/weather/current/* files.
-     *
-     * @param {Array} catalog array of file names, sorted and prefixed with yyyyMMdd. Last item is most recent.
-     * @param {String} date string with format yyyy/MM/dd or "current"
-     * @param {Number?} offset
-     * @returns {String} file name
-     */
-    function lookupOscar(catalog, date, offset) {
-        offset = +offset || 0;
-        if (date === "current") {
-            return catalog[catalog.length - 1 + offset];
-        }
-        var prefix = µ.ymdRedelimit(date, "/", ""), i = _.sortedIndex(catalog, prefix);
-        i = (catalog[i] || "").indexOf(prefix) === 0 ? i : i - 1;
-        return catalog[i + offset];
-    }
-
-    function oscar0p33Path(catalog, attr) {
-        var file = lookupOscar(catalog, attr.date);
-        return file ? [OSCAR_PATH, file].join("/") : null;
-    }
-
-    function oscarDate(catalog, attr) {
-        var file = lookupOscar(catalog, attr.date);
-        var parts = file ? µ.ymdRedelimit(file, "", "/").split("/") : null;
-        return parts ? new Date(Date.UTC(+parts[0], parts[1] - 1, +parts[2], 0)) : null;
-    }
-
-    /**
-     * @returns {Date} the chronologically next or previous OSCAR data layer. How far forward or backward in
-     * time to jump is determined by the step and the catalog of available layers. A step of ±1 moves to the
-     * next/previous entry in the catalog (about 5 days), and a step of ±10 moves to the entry six positions away
-     * (about 30 days).
-     */
-    function oscarStep(catalog, date, step) {
-        var file = lookupOscar(catalog, µ.dateToUTCymd(date, "/"), step > 1 ? 6 : step < -1 ? -6 : step);
-        var parts = file ? µ.ymdRedelimit(file, "", "/").split("/") : null;
-        return parts ? new Date(Date.UTC(+parts[0], parts[1] - 1, +parts[2], 0)) : null;
-    }
-
-    function dataSource(header) {
-        // noinspection FallthroughInSwitchStatementJS
-        switch (header.center || header.centerName) {
-            case -3:
-                return "OSCAR / Earth & Space Research";
-            case 7:
-            case "US National Weather Service, National Centres for Environmental Prediction (NCEP)":
-                return "GFS / NCEP / US National Weather Service";
-            default:
-                return header.centerName;
-        }
-    }
 
     function bilinearInterpolateScalar(x, y, g00, g10, g01, g11) {
         var rx = (1 - x);
@@ -651,14 +270,11 @@ var products = function() {
      *
      */
     function buildGrid(builder) {
-        // var builder = createBuilder(data);
 
         var header = builder.header;
         var λ0 = header.lo1, φ0 = header.la1;  // the grid's origin (e.g., 0.0E, 90.0N)
         var Δλ = header.dx, Δφ = header.dy;    // distance between grid points (e.g., 2.5 deg lon, 2.5 deg lat)
         var ni = header.nx, nj = header.ny;    // number of grid points W-E and N-S (e.g., 144 x 73)
-        var date = new Date(header.refTime);
-        date.setHours(date.getHours() + header.forecastTime);
 
         // Scan mode 0 assumed. Longitude increases from λ0, and latitude decreases from φ0.
         // http://www.nco.ncep.noaa.gov/pmb/docs/grib2/grib2_table3-4.shtml
@@ -705,13 +321,10 @@ var products = function() {
                     }
                 }
             }
-            // console.log("cannot interpolate: " + λ + "," + φ + ": " + fi + " " + ci + " " + fj + " " + cj);
             return null;
         }
 
         return {
-            source: dataSource(header),
-            date: date,
             interpolate: interpolate,
             forEachPoint: function(cb) {
                 for (var j = 0; j < nj; j++) {
