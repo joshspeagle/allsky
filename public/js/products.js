@@ -41,6 +41,7 @@ const LAYERS = {
         units: {label: "stars", precision: 0},
         scale: {
             bounds: [0, 32000],
+            logarithmic: true,  // the colour stops roughly double, so the colour bar spaces log(1 + stars)
             gradient: segmentedColorScale([
                 [0, [12,7,134]],
                 [1, [43,5,148]],
