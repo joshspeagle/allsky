@@ -132,13 +132,6 @@ export function view() {
 }
 
 /**
- * Removes all children of the specified DOM element.
- */
-export function removeChildren(element) {
-    element.replaceChildren();
-}
-
-/**
  * Clears the specified Canvas element and returns it.
  */
 export function clearCanvas(canvas) {
@@ -222,17 +215,17 @@ export function formatVector(wind, units) {
 }
 
 /**
- * Returns a promise for a JSON resource (URL). If the load fails, the promise rejects with an object describing
- * the reason: {status: http-status-code, message: http-status-text, resource:}, with status -1 when the server
- * cannot be reached.
+ * Returns a promise for a JSON resource (URL), which the abort signal can cancel. If the load fails, the promise
+ * rejects with an object describing the reason: {status: http-status-code, message: http-status-text, resource:},
+ * with status -1 when the server cannot be reached.
  */
-export async function loadJson(resource) {
+export async function loadJson(resource, signal) {
     let response;
     try {
-        response = await fetch(resource);
+        response = await fetch(resource, {signal});
     }
-    catch {
-        throw {status: -1, message: "Cannot load resource: " + resource, resource};
+    catch (e) {
+        throw signal && signal.aborted ? e : {status: -1, message: "Cannot load resource: " + resource, resource};
     }
     if (!response.ok) {
         throw {status: response.status, message: response.statusText, resource};

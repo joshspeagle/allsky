@@ -27,7 +27,7 @@ const DEFAULT_CONFIG = "current/wind/surface/level/atlantis";
  * @param overlayTypes the set of allowed overlays.
  * @returns {Object} the result of the parse, or {} when the hash does not match the grammar.
  */
-export function parse(hash, projectionNames, overlayTypes) {
+function parse(hash, projectionNames, overlayTypes) {
     //               1        2        3          4          5            6      7      8    9
     const tokens = /^(current|(\d{4})\/(\d{1,2})\/(\d{1,2})\/(\d{3,4})Z)\/(\w+)\/(\w+)\/(\w+)(\/.+)?/.exec(hash);
     if (!tokens) {
@@ -67,10 +67,10 @@ export function parse(hash, projectionNames, overlayTypes) {
 }
 
 /**
- * Holds the page's configuration as a set of attributes: layer, projection, orientation, etc. Changes fire
- * "change:<attribute>" events with (configuration, value, options) for each changed attribute, then one
- * "change" event with (configuration, options). For example, configuration.save({projection: "orthographic"})
- * fires an event which causes the globe to be re-rendered with an orthographic projection.
+ * Holds the page's configuration as a set of attributes: layer, projection, orientation, etc. A change fires
+ * "change:<attribute>" with (value, options) for each changed attribute, then one "change" with the array of
+ * changed attribute names. For example, configuration.save({projection: "orthographic"}) fires an event which
+ * causes the globe to be re-rendered with an orthographic projection.
  *
  * All attributes are kept in a human readable form in the page's hash fragment, and vice versa. This allows
  * deep linking and back-button navigation.
@@ -78,7 +78,6 @@ export function parse(hash, projectionNames, overlayTypes) {
 export class Configuration extends Emitter {
     #projectionNames;
     #overlayTypes;
-    #changed = {};
     #ignoreNextHashChange = false;
 
     /**
@@ -97,26 +96,14 @@ export class Configuration extends Emitter {
     }
 
     /**
-     * @returns {Object} the attributes that changed in the last set, with their new values.
-     */
-    changedAttributes() {
-        return this.#changed;
-    }
-
-    /**
      * Sets attributes and fires change events for those whose value changed.
      */
     set(attrs, options = {}) {
-        this.#changed = {};
-        Object.entries(attrs).forEach(([key, value]) => {
-            if (this.attributes[key] !== value) {
-                this.#changed[key] = this.attributes[key] = value;
-            }
-        });
-        const keys = Object.keys(this.#changed);
-        keys.forEach(key => this.trigger("change:" + key, this, this.attributes[key], options));
-        if (keys.length > 0) {
-            this.trigger("change", this, options);
+        const changed = Object.keys(attrs).filter(key => this.attributes[key] !== attrs[key]);
+        changed.forEach(key => { this.attributes[key] = attrs[key]; });
+        changed.forEach(key => this.trigger("change:" + key, this.attributes[key], options));
+        if (changed.length > 0) {
+            this.trigger("change", changed);
         }
         return this;
     }
@@ -133,15 +120,21 @@ export class Configuration extends Emitter {
     }
 
     /**
-     * Reads the configuration from the hash fragment. Calls caused by "hashchange" events must pass
-     * {trigger: "hashchange"}.
+     * Reads the configuration from the hash fragment.
      */
-    fetch(options = {}) {
-        if (options.trigger === "hashchange" && this.#ignoreNextHashChange) {
+    fetch() {
+        return this.set(parse(window.location.hash.substr(1) || DEFAULT_CONFIG, this.#projectionNames, this.#overlayTypes));
+    }
+
+    /**
+     * Reads the configuration from the hash fragment after a "hashchange" event, unless save() caused it.
+     */
+    onHashChange() {
+        if (this.#ignoreNextHashChange) {
             this.#ignoreNextHashChange = false;
             return this;
         }
-        return this.set(parse(window.location.hash.substr(1) || DEFAULT_CONFIG, this.#projectionNames, this.#overlayTypes));
+        return this.fetch();
     }
 
     /**
@@ -151,8 +144,7 @@ export class Configuration extends Emitter {
         const attr = this.attributes;
         const dir = attr.date === "current" ? "current" : attr.date + "/" + attr.hour + "Z";
         const proj = [attr.projection, attr.orientation].filter(Boolean).join("=");
-        const ol = attr.overlayType === undefined || attr.overlayType === null || attr.overlayType === "default" ?
-            "" : "overlay=" + attr.overlayType;
+        const ol = attr.overlayType === "default" ? "" : "overlay=" + attr.overlayType;
         const grid = attr.showGridPoints ? "grid=on" : "";
         return [dir, attr.param, attr.surface, attr.level, ol, proj, grid].filter(Boolean).join("/");
     }

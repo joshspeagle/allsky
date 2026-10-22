@@ -15,8 +15,11 @@ const d3 = window.d3;
 const DEFAULT_ROTATION = [230, 0];
 const SPHERE = {type: "Sphere"};
 
+// The range of scales to which a globe can be zoomed.
+export const SCALE_EXTENT = [25, 3000];
+
 function ensureNumber(num, fallback) {
-    return Number.isFinite(num) || num === Infinity || num === -Infinity ? num : fallback;
+    return Number.isNaN(num) ? fallback : num;
 }
 
 /**
@@ -83,13 +86,6 @@ class Globe {
     }
 
     /**
-     * @returns {Array} the range at which this globe can be zoomed.
-     */
-    scaleExtent() {
-        return [25, 3000];
-    }
-
-    /**
      * Returns the current orientation of this globe as a string. If the arguments are specified,
      * mutates this globe to match the specified orientation string, usually in the form "lat,lon,scale".
      *
@@ -100,11 +96,10 @@ class Globe {
         const projection = this.projection, rotate = projection.rotate();
         if (isValue(o)) {
             const parts = o.split(","), λ = +parts[0], φ = +parts[1], scale = +parts[2];
-            const extent = this.scaleExtent();
             projection.rotate(Number.isFinite(λ) && Number.isFinite(φ) ?
                 [-λ, -φ, rotate[2]] :
                 this.newProjection(view).rotate());
-            projection.scale(Number.isFinite(scale) ? clamp(scale, extent[0], extent[1]) : this.fit(view));
+            projection.scale(Number.isFinite(scale) ? clamp(scale, SCALE_EXTENT[0], SCALE_EXTENT[1]) : this.fit(view));
             projection.translate(this.center(view));
             return this;
         }
@@ -203,28 +198,35 @@ class Globe {
     }
 }
 
-/**
- * The globe builders, by projection name. Each takes the size of the view as {width:, height:}.
- */
-export const globes = new Map([
-    ["atlantis", view => new Globe(() => d3.geoMollweide().rotate(DEFAULT_ROTATION).precision(0.1), view)],
-    ["azimuthal_equidistant", view => new Globe(() =>
-        d3.geoAzimuthalEquidistant().precision(0.1).rotate([0, -90]).clipAngle(180 - 0.001), view)],
-    ["conic_equidistant", view => new Globe(() =>
-        d3.geoConicEquidistant().center([0, 0]).rotate(DEFAULT_ROTATION).precision(0.1), view,
-        {center: v => [v.width / 2, v.height / 2 + v.height * 0.065]})],
-    ["equirectangular", view => new Globe(() => d3.geoEquirectangular().rotate(DEFAULT_ROTATION).precision(0.1), view)],
-    ["orthographic", view => new Globe(() =>
-        d3.geoOrthographic().rotate(DEFAULT_ROTATION).precision(0.1).clipAngle(90), view, {fill: "gradient"})],
+// For each projection name: newProjection(view), and the options of its Globe.
+const PROJECTIONS = new Map([
+    ["atlantis", [() => d3.geoMollweide().rotate(DEFAULT_ROTATION).precision(0.1)]],
+    ["azimuthal_equidistant", [() => d3.geoAzimuthalEquidistant().precision(0.1).rotate([0, -90]).clipAngle(180 - 0.001)]],
+    ["conic_equidistant", [() => d3.geoConicEquidistant().center([0, 0]).rotate(DEFAULT_ROTATION).precision(0.1),
+        {center: view => [view.width / 2, view.height / 2 + view.height * 0.065]}]],
+    ["equirectangular", [() => d3.geoEquirectangular().rotate(DEFAULT_ROTATION).precision(0.1)]],
+    ["orthographic", [() => d3.geoOrthographic().rotate(DEFAULT_ROTATION).precision(0.1).clipAngle(90),
+        {fill: "gradient"}]],
     // The sphere's bounds are clipped to the view, so fit() depends on the default scale: keep d3 v3's 150.
-    ["stereographic", view => new Globe(v =>
-        d3.geoStereographic()
-            .scale(150)
-            .rotate([-43, -20])
-            .precision(1.0)
-            .clipAngle(180 - 0.0001)
-            .clipExtent([[0, 0], [v.width, v.height]]), view)],
-    ["waterman", view => new Globe(() => d3.geoPolyhedralWaterman().rotate([20, 0]).precision(0.1), view,
-        {clipGraticule: true})],
-    ["winkel3", view => new Globe(() => d3.geoWinkel3().precision(0.1), view)]
+    ["stereographic", [view => d3.geoStereographic()
+        .scale(150)
+        .rotate([-43, -20])
+        .precision(1.0)
+        .clipAngle(180 - 0.0001)
+        .clipExtent([[0, 0], [view.width, view.height]])]],
+    ["waterman", [() => d3.geoPolyhedralWaterman().rotate([20, 0]).precision(0.1), {clipGraticule: true}]],
+    ["winkel3", [() => d3.geoWinkel3().precision(0.1)]]
 ]);
+
+/**
+ * The names of the projections.
+ */
+export const projectionNames = new Set(PROJECTIONS.keys());
+
+/**
+ * @returns {Globe} a new globe with the named projection, for a view of the given size {width:, height:}.
+ */
+export function newGlobe(projectionName, view) {
+    const [newProjection, options] = PROJECTIONS.get(projectionName);
+    return new Globe(newProjection, view, options);
+}

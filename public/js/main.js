@@ -10,7 +10,7 @@
 import {Agent} from "./agent.js";
 import {Configuration} from "./configuration.js";
 import {Emitter} from "./events.js";
-import {globes} from "./globes.js";
+import {SCALE_EXTENT, newGlobe, projectionNames} from "./globes.js";
 import {overlayTypes, productsFor} from "./products.js";
 import * as µ from "./util.js";
 
@@ -72,12 +72,14 @@ const report = (() => {
 })();
 
 function newAgent() {
-    return new Agent().on({reject: report.error, fail: report.error});
+    const agent = new Agent();
+    agent.on({reject: report.error, fail: report.error});
+    return agent;
 }
 
 // Construct the page's main internal components:
 
-const configuration = new Configuration(globes, overlayTypes);  // holds the page's current configuration settings
+const configuration = new Configuration(projectionNames, overlayTypes);  // holds the page's current configuration settings
 const inputController = buildInputController();                 // interprets drag/zoom operations
 const globeAgent = newAgent();     // the model of the globe
 const gridAgent = newAgent();      // the data grids of the current layer
@@ -85,15 +87,6 @@ const rendererAgent = newAgent();  // the globe SVG renderer
 const fieldAgent = newAgent();     // the interpolated wind vector field
 const animatorAgent = newAgent();  // the wind animator
 const overlayAgent = newAgent();   // color overlay over the animation
-
-/**
- * @returns {Array} the position [x, y] of a zoom event's pointer (or first touch) relative to the node.
- */
-function pointerOf(event, node) {
-    const source = event.sourceEvent;
-    const touch = source.touches && (source.touches[0] || source.changedTouches[0]);
-    return d3.pointer(touch || source, node);
-}
 
 /**
  * The input controller is an object that translates move operations (drag and/or zoom) into mutations of the
@@ -137,12 +130,12 @@ function buildInputController() {
         .duration(0)
         .on("start", function(event) {
             if (event.sourceEvent && globe) {
-                op = op || newOp(pointerOf(event, this), event.transform.k);  // a new operation begins
+                op = op || newOp(d3.pointers(event, this)[0], event.transform.k);  // a new operation begins
             }
         })
         .on("zoom", function(event) {
             if (!event.sourceEvent || !globe) return;
-            const currentMouse = pointerOf(event, this), currentScale = event.transform.k;
+            const currentMouse = d3.pointers(event, this)[0], currentScale = event.transform.k;
             op = op || newOp(currentMouse, 1);  // Fix bug on some browsers where start fires out of order.
             if (op.type === "click" || op.type === "spurious") {
                 const distanceMoved = µ.distance(currentMouse, op.startMouse);
@@ -187,7 +180,7 @@ function buildInputController() {
         zoom.scaleTo(display, 2 ** (event.shiftKey ? Math.ceil(k) - 1 : Math.floor(k) + 1), d3.pointer(event, this), event);
     });
 
-    function reorient(model, value, options = {}) {
+    function reorient(value, options = {}) {
         if (!globe || options.source === "moveEnd") {
             // reorientation occurred because the user just finished a move operation, so globe is already
             // oriented correctly.
@@ -202,57 +195,46 @@ function buildInputController() {
     const dispatch = Object.assign(new Emitter(), {
         globe(g) {
             globe = g;
-            zoom.scaleExtent(globe.scaleExtent());
+            zoom.scaleExtent(SCALE_EXTENT);
             reorient();
-            return this;
         }
     });
-    return dispatch.listenTo(configuration, "change:orientation", reorient);
+    configuration.on("change:orientation", reorient);
+    return dispatch;
 }
 
-/**
- * @param {String} projectionName the desired projection's name.
- * @returns {Object} a globe object.
- */
-function buildGlobe(projectionName) {
-    const builder = globes.get(projectionName);
-    if (!builder) {
-        throw "Unknown projection: " + projectionName;
-    }
-    return builder(view);
+function buildGlobe(signal, projectionName) {
+    return newGlobe(projectionName, view);
 }
 
-function buildGrids() {
+function buildGrids(signal) {
     report.status("Downloading...");
-    const cancel = this.cancel;
     const layers = productsFor(configuration.attributes);
     if (layers.length === 0) {
         return Promise.reject({status: 404, message: "No Data"});
     }
     log.time("build grids");
-    return Promise.all(layers.map(product => product.load(cancel))).then(products => {
+    // Keep the loaded vector grid when only the overlay changes.
+    const previous = (gridAgent.value() || {}).primaryGrid;
+    const load = product => previous && product.path === previous.path ? previous : product.load(signal);
+    return Promise.all(layers.map(load)).then(products => {
         return {primaryGrid: products[0], overlayGrid: products[1] || products[0]};
     }).finally(() => {
         log.timeEnd("build grids");
     });
 }
 
-let rendererListener = null;  // listens to the input controller for the current renderer
+let stopRendererListening = () => {};  // removes the input controller listeners of the current renderer
 
-function buildRenderer(globe) {
-    if (!globe) return null;
-
+function buildRenderer(signal, globe) {
     report.status("Rendering Globe...");
     log.time("rendering map");
 
-    if (rendererListener) {
-        rendererListener.stopListening();
-    }
-    rendererListener = new Emitter();
+    stopRendererListening();
 
     // First clear map and foreground svg contents.
-    µ.removeChildren(d3.select("#map").node());
-    µ.removeChildren(d3.select("#foreground").node());
+    d3.select("#map").node().replaceChildren();
+    d3.select("#foreground").node().replaceChildren();
     // Create new map svg elements.
     globe.defineMap(d3.select("#map"), d3.select("#foreground"));
 
@@ -287,7 +269,7 @@ function buildRenderer(globe) {
     }, REDRAW_WAIT);
 
     // Attach to map rendering events on input controller.
-    rendererListener.listenTo(inputController, {
+    stopRendererListening = inputController.on({
         moveStart() {
             rendererAgent.trigger("start");
         },
@@ -306,7 +288,7 @@ function buildRenderer(globe) {
     setTimeout(() => inputController.globe(globe), 0);
 
     log.timeEnd("rendering map");
-    return "ready";
+    return globe;
 }
 
 function createMask(globe) {
@@ -404,7 +386,7 @@ function distort(projection, λ, φ, x, y, scale, wind) {
     return wind;
 }
 
-function interpolateField(globe, grids) {
+function interpolateField(signal, globe, grids) {
     if (!globe || !grids) return null;
 
     const mask = createMask(globe);
@@ -412,7 +394,6 @@ function interpolateField(globe, grids) {
     const overlayGrid = grids.overlayGrid;
 
     log.time("interpolating field");
-    const cancel = this.cancel;
 
     const projection = globe.projection;
     const bounds = globe.bounds(view);
@@ -464,7 +445,7 @@ function interpolateField(globe, grids) {
     return new Promise((resolve, reject) => {
         (function batchInterpolate() {
             try {
-                if (!cancel.requested) {
+                if (!signal.aborted) {
                     const start = Date.now();
                     while (x < bounds.xMax) {
                         interpolateColumn(x);
@@ -488,10 +469,9 @@ function interpolateField(globe, grids) {
     });
 }
 
-function animate(globe, field, grids) {
+function animate(signal, globe, field, grids) {
     if (!globe || !field || !grids) return;
 
-    const cancel = this.cancel;
     const bounds = globe.bounds(view);
     // maxIntensity is the velocity at which particle color intensity is maximum
     const colorStyles = µ.windIntensityColorScale(INTENSITY_SCALE_STEP, grids.primaryGrid.particles.maxIntensity);
@@ -569,7 +549,7 @@ function animate(globe, field, grids) {
 
     (function frame() {
         try {
-            if (cancel.requested) {
+            if (signal.aborted) {
                 field.release();
                 return;
             }
@@ -605,7 +585,7 @@ function drawGridPoints(ctx, grid, globe) {
     });
 }
 
-function drawOverlay(field, overlayType) {
+function drawOverlay(signal, field, overlayType) {
     if (!field) return;
 
     const ctx = d3.select("#overlay").node().getContext("2d"), grid = (gridAgent.value() || {}).overlayGrid;
@@ -640,19 +620,11 @@ function drawOverlay(field, overlayType) {
 }
 
 /**
- * Displays the vector at a location, with its units.
+ * Displays a readout at a location: its text in the element with the given id, and the units in id + "-units".
  */
-function showWindAtLocation(wind, product) {
-    d3.select("#location-wind").text(µ.formatVector(wind, product.units));
-    d3.select("#location-wind-units").text(product.units.label);
-}
-
-/**
- * Displays the overlay value at a location, with its units.
- */
-function showOverlayValueAtLocation(value, product) {
-    d3.select("#location-value").text(µ.formatScalar(value, product.units));
-    d3.select("#location-value-units").text(product.units.label);
+function showReadout(id, text, units) {
+    d3.select("#" + id).text(text);
+    d3.select("#" + id + "-units").text(units.label);
 }
 
 // Stores the point and coordinate of the currently visible location. This is used to update the location
@@ -681,12 +653,12 @@ function showLocationDetails(point = [], coord = []) {
     if (field.isDefined(point[0], point[1]) && grids) {
         const wind = grids.primaryGrid.interpolate(λ, φ);
         if (µ.isValue(wind)) {
-            showWindAtLocation(wind, grids.primaryGrid);
+            showReadout("location-wind", µ.formatVector(wind, grids.primaryGrid.units), grids.primaryGrid.units);
         }
         if (grids.overlayGrid !== grids.primaryGrid) {
             const value = grids.overlayGrid.interpolate(λ, φ);
             if (µ.isValue(value)) {
-                showOverlayValueAtLocation(value, grids.overlayGrid);
+                showReadout("location-value", µ.formatScalar(value, grids.overlayGrid.units), grids.overlayGrid.units);
             }
         }
     }
@@ -725,8 +697,8 @@ function stopCurrentAnimation(alsoClearCanvas) {
  */
 function bindButtonToConfiguration(elementId, newAttr, keys = Object.keys(newAttr)) {
     d3.select(elementId).on("click", () => configuration.save(newAttr));
-    configuration.on("change", model => {
-        d3.select(elementId).classed("highlighted", keys.every(key => model.attributes[key] === newAttr[key]));
+    configuration.on("change", () => {
+        d3.select(elementId).classed("highlighted", keys.every(key => configuration.get(key) === newAttr[key]));
     });
 }
 
@@ -763,22 +735,21 @@ function init() {
     // Bind configuration to URL bar changes.
     d3.select(window).on("hashchange", () => {
         log.debug("hashchange");
-        configuration.fetch({trigger: "hashchange"});
+        configuration.onHashChange();
     });
 
     configuration.on("change", report.reset);
 
-    globeAgent.listenTo(configuration, "change:projection", (source, projection) => {
+    configuration.on("change:projection", projection => {
         globeAgent.submit(buildGlobe, projection);
     });
 
-    gridAgent.listenTo(configuration, "change", () => {
-        const changed = Object.keys(configuration.changedAttributes());
+    configuration.on("change", changed => {
 
         // Build a new grid if any layer-related attributes have changed.
         let rebuildRequired = ["date", "hour", "param", "surface", "level"].some(key => changed.includes(key));
         // Build a new grid if the new overlay type is different from the current one.
-        const overlayType = configuration.get("overlayType") || "default";
+        const overlayType = configuration.get("overlayType");
         if (changed.includes("overlayType") && overlayType !== "off") {
             const grids = gridAgent.value() || {}, primary = grids.primaryGrid, overlay = grids.overlayGrid;
             if (!overlay) {
@@ -796,7 +767,7 @@ function init() {
         }
     });
 
-    rendererAgent.listenTo(globeAgent, "update", globe => {
+    globeAgent.on("update", globe => {
         rendererAgent.submit(buildRenderer, globe);
     });
 
@@ -806,21 +777,21 @@ function init() {
     function cancelInterpolation() {
         fieldAgent.cancel();
     }
-    fieldAgent.listenTo(gridAgent, "update", startInterpolation);
-    fieldAgent.listenTo(rendererAgent, "render", startInterpolation);
-    fieldAgent.listenTo(rendererAgent, "start", cancelInterpolation);
-    fieldAgent.listenTo(rendererAgent, "redraw", cancelInterpolation);
+    gridAgent.on("update", startInterpolation);
+    rendererAgent.on("render", startInterpolation);
+    rendererAgent.on("start", cancelInterpolation);
+    rendererAgent.on("redraw", cancelInterpolation);
 
-    animatorAgent.listenTo(fieldAgent, "update", field => {
+    fieldAgent.on("update", field => {
         animatorAgent.submit(animate, globeAgent.value(), field, gridAgent.value());
     });
-    animatorAgent.listenTo(rendererAgent, "start", () => stopCurrentAnimation(true));
-    animatorAgent.listenTo(gridAgent, "submit", () => stopCurrentAnimation(false));
-    animatorAgent.listenTo(fieldAgent, "submit", () => stopCurrentAnimation(false));
+    rendererAgent.on("start", () => stopCurrentAnimation(true));
+    gridAgent.on("submit", () => stopCurrentAnimation(false));
+    fieldAgent.on("submit", () => stopCurrentAnimation(false));
 
-    overlayAgent.listenTo(fieldAgent, "update", () => {
-        overlayAgent.submit((field, overlayType) => {
-            drawOverlay(field, overlayType);
+    fieldAgent.on("update", () => {
+        overlayAgent.submit((signal, field, overlayType) => {
+            drawOverlay(signal, field, overlayType);
             // Count the overlays drawn for newly interpolated fields. The tests wait on this; keep it.
             if (field) {
                 const root = document.documentElement.dataset;
@@ -828,11 +799,10 @@ function init() {
             }
         }, fieldAgent.value(), configuration.get("overlayType"));
     });
-    overlayAgent.listenTo(rendererAgent, "start", () => {
+    rendererAgent.on("start", () => {
         overlayAgent.submit(drawOverlay, fieldAgent.value(), null);
     });
-    overlayAgent.listenTo(configuration, "change", () => {
-        const changed = Object.keys(configuration.changedAttributes());
+    configuration.on("change", changed => {
         // if only overlay relevant flags have changed...
         if (changed.includes("overlayType") || changed.includes("showGridPoints")) {
             overlayAgent.submit(drawOverlay, fieldAgent.value(), configuration.get("overlayType"));
@@ -847,7 +817,7 @@ function init() {
     d3.select("#option-show-grid").on("click", () => {
         configuration.save({showGridPoints: !configuration.get("showGridPoints")});
     });
-    configuration.on("change:showGridPoints", (x, showGridPoints) => {
+    configuration.on("change:showGridPoints", showGridPoints => {
         d3.select("#option-show-grid").classed("highlighted", showGridPoints);
     });
 
@@ -866,7 +836,7 @@ function init() {
     bindButtonToConfiguration("#overlay-wind", {param: "wind", overlayType: "default"});
 
     // Add handlers for all projection buttons.
-    globes.forEach((builder, p) => {
+    projectionNames.forEach(p => {
         bindButtonToConfiguration("#" + p, {projection: p, orientation: ""}, ["projection"]);
     });
 
@@ -877,9 +847,5 @@ function init() {
     });
 }
 
-function start() {
-    // Everything is now set up, so load configuration from the hash fragment and kick off change events.
-    configuration.fetch();
-}
-
-Promise.resolve().then(init).then(start).catch(report.error);
+// Once everything is set up, load the configuration from the hash fragment, which starts the change events.
+Promise.resolve().then(init).then(() => configuration.fetch()).catch(report.error);

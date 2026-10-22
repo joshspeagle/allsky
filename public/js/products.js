@@ -218,15 +218,15 @@ function buildGrid(header, data, interpolateCell) {
 }
 
 /**
- * Returns a product: a layer type with a load(cancel) method, which loads its file and adds the grid's
- * interpolate and forEachPoint methods to the product. The promise resolves to null if cancel.requested.
+ * Returns a product: a layer type with a load(signal) method, which loads its file and adds the grid's
+ * interpolate and forEachPoint methods to the product. The promise resolves to null if the signal aborts.
  */
 function newProduct(type, attr) {
     const path = dataPath(attr, type);
-    return Object.assign({type}, LAYERS[type], {
-        async load(cancel) {
-            const records = await loadJson(path);
-            if (cancel.requested) {
+    return Object.assign({type, path}, LAYERS[type], {
+        async load(signal) {
+            const records = await loadJson(path, signal);
+            if (signal.aborted) {
                 return null;
             }
             const header = records[0].header;
