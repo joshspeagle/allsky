@@ -129,6 +129,8 @@ The data files, the code and the URL hashes still use earth's weather names:
 - Write a test only when it catches a plausible bug in this code that no other test catches.
 - Test contracts, invariants and regressions (each bug fix adds a test that fails without it). Do not test a library's behaviour.
 - Assert on values and pixels, never on wall-clock time.
+- The pixel snapshots come from Chromium on Linux, as in the CI image `mcr.microsoft.com/playwright:v1.56.1-noble`. On another platform, run the tests in that image.
+- The tests wait on `data-field-overlays` on the `<html>` element, which `earth.js` increments after it draws the overlay of a new field. A rewrite keeps this signal.
 - Name a test as a sentence that states the behaviour: `masked cells show no overlay colour`.
 
 ## Documentation

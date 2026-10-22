@@ -22,6 +22,6 @@ module.exports = defineConfig({
     webServer: {
         command: `node dev-server.js ${PORT}`,
         url: `http://localhost:${PORT}/`,
-        reuseExistingServer: !process.env.CI
+        reuseExistingServer: false
     }
 });

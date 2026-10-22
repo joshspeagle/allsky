@@ -29,17 +29,17 @@ const test = base.test.extend({
 });
 
 /**
- * Returns the number of overlays the page has drawn (see drawOverlay in earth.js).
+ * Returns the number of overlays the page has drawn for newly interpolated fields (see earth.js).
  */
 function overlayDraws(page) {
-    return page.evaluate(() => +(document.documentElement.dataset.overlayDraws || 0));
+    return page.evaluate(() => +(document.documentElement.dataset.fieldOverlays || 0));
 }
 
 /**
- * Waits until the page has drawn more than the given number of overlays.
+ * Waits until the page has drawn more than the given number of overlays for newly interpolated fields.
  */
 function waitForOverlayDraw(page, after) {
-    return page.waitForFunction(n => +(document.documentElement.dataset.overlayDraws || 0) > n, after);
+    return page.waitForFunction(n => +(document.documentElement.dataset.fieldOverlays || 0) > n, after);
 }
 
 /**

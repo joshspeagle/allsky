@@ -38,8 +38,9 @@ function hashFor(bin, overlay, projection) {
         .filter(Boolean).join("/");
 }
 
-// Pixels in the 960x600 view that land on observed sky, on masked sky and off the sphere, in the default view.
-const PROBES = [[480, 140], [300, 200], [700, 230], [480, 300], [380, 420], [600, 470], [20, 20]];
+// Pixels in the 960x600 view that land off the sphere, on observed sky and on masked sky, in the default view.
+// The probe off the sphere comes first, because a click there leaves any earlier readout in place.
+const PROBES = [[20, 20], [480, 140], [300, 200], [700, 230], [480, 300], [380, 420], [600, 470]];
 
 test.describe("map pixels", () => {
     const cases = [
@@ -80,25 +81,28 @@ test.describe("colour bars", () => {
                 }
                 return samples;
             });
-            const expected = golden(`scale-${overlay}.json`, profile);
-            expect(profile.length).toBe(expected.length);
-            expect(Math.max(...profile.map((x, i) => Math.abs(x - expected[i])))).toBeLessThanOrEqual(6);
+            expectProfile(`scale-${overlay}.json`, profile, 6);
         });
     }
 });
 
 /**
- * Returns the stored value of a snapshot that is compared with a tolerance. Writes the actual value when
- * snapshots are being updated, and fails when the snapshot is missing.
+ * Compares numbers with their snapshot, within a tolerance. Follows toMatchSnapshot: a missing snapshot is
+ * written and fails, "--update-snapshots=changed" writes only a snapshot outside the tolerance, and
+ * "--update-snapshots" (all) writes every snapshot.
  */
-function golden(name, actual) {
+function expectProfile(name, actual, tolerance) {
     const file = test.info().snapshotPath(name);
     const update = test.info().config.updateSnapshots;
-    if (update === "all" || update === "changed" || (update === "missing" && !fs.existsSync(file))) {
+    const expected = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : null;
+    const difference = expected && expected.length === actual.length ?
+        Math.max(...actual.map((x, i) => Math.abs(x - expected[i]))) : Infinity;
+    if (!expected || update === "all" || (update === "changed" && difference > tolerance)) {
         fs.writeFileSync(file, JSON.stringify(actual) + "\n");
+        expect(expected || update === "all" || update === "changed", `snapshot ${name} was missing`).toBeTruthy();
+        return;
     }
-    expect(fs.existsSync(file), `snapshot ${name} exists`).toBe(true);
-    return JSON.parse(fs.readFileSync(file, "utf8"));
+    expect(difference, `largest difference from ${name}`).toBeLessThanOrEqual(tolerance);
 }
 
 test.describe("location readouts", () => {
@@ -175,5 +179,6 @@ test("dragging the map changes the orientation in the hash", async ({ page }) =>
     await page.mouse.down();
     await page.mouse.move(530, 320, { steps: 5 });
     await page.mouse.up();
-    await expect.poll(() => hashOf(page)).toMatch(/orthographic=-?\d+\.\d\d,-?\d+\.\d\d,\d+$/);
+    await expect.poll(() => hashOf(page)).toContain("orthographic=");
+    expect(await hashOf(page)).toMatchSnapshot("dragged-hash.txt");
 });

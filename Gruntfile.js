@@ -6,10 +6,9 @@ module.exports = function(grunt) {
     grunt.initConfig({
         pkg: grunt.file.readJSON("package.json"),
         jshint: {
-            files: ["*.js", "!playwright.config.js"],  // ESLint replaces jshint in the next step of #19
+            files: ["*.js"],
             options: {
-                // Use ES5 syntax; ES6 globals like Promise are allowed via `globals`.
-                esversion: 5,
+                esversion: 11,
                 globals: {
                     Buffer: false,
                     console: false,
