@@ -16,7 +16,7 @@ jobs:
     container: mcr.microsoft.com/playwright:v1.56.1-noble
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - run: npm ci
       - run: npm run lint
       - run: npm test
