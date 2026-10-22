@@ -8,7 +8,7 @@ allsky is an animated all-sky map of the Milky Way's stars. It shows the mean ta
 - `public/index.html`: the page and its menu.
 - `public/js/`: the application code, as ES modules. `main.js` is the entry point: the page wiring, the interpolated field, the particle animation and the overlay. `configuration.js` holds the settings and their URL hash; `agent.js` runs the asynchronous tasks; `events.js` is the event emitter both build on; `globes.js` holds the map projections; `products.js` the data layers, their colour scales and the grid interpolation; `util.js` the helpers.
 - `public/libs/`: the vendored libraries, d3 and d3-geo-projection, which `index.html` loads as classic scripts before `main.js`. The modules read them as `window.d3`.
-- `public/data/<bin>/<quantity>.json`: the data, one file per distance bin (`0-2kpc` to `20-50kpc`) and quantity (`velocity`, `density`, `metallicity`, `age`), on a 1 degree grid in Galactic longitude and latitude. `velocity.json` holds two records, the components u and v in km/s.
+- `public/data/<bin>/<quantity>.json`: the data, one file per distance bin (`0-2kpc` to `20-50kpc`) and quantity (`velocity`, `density`, `metallicity`, `age`), on a 1 degree grid in Galactic longitude and latitude. Each file is a JSON array of records `{header, data}`: one record for a scalar, two for `velocity` (the components u and v, in km/s).
 - `public/styles/`: the stylesheet and its subset font.
 - `dev-server.js`: a local static server (Express) for `public/`.
 - `tests/`: the Playwright regression tests and their snapshots (`tests/snapshots/`).
