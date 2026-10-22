@@ -223,9 +223,9 @@ function buildGrids(signal) {
     report.status("Downloading...");
     const layers = productsFor(configuration.attributes);
     log.time("build grids");
-    // Keep the loaded vector grid when only the overlay changes.
-    const previous = (gridAgent.value() || {}).primaryGrid;
-    const load = product => previous && product.path === previous.path ? previous : product.load(signal);
+    // Keep the loaded grids that the new configuration still shows.
+    const loaded = Object.values(gridAgent.value() || {});
+    const load = product => loaded.find(grid => grid.path === product.path) || product.load(signal);
     return Promise.all(layers.map(load)).then(products => {
         return {primaryGrid: products[0], overlayGrid: products[1] || products[0]};
     }).finally(() => {
@@ -750,14 +750,10 @@ function init() {
         globeAgent.submit(buildGlobe, projection);
     });
 
-    // The overlay that the current grids, or the grids being built, hold: "velocity" when they hold no scalar.
-    let gridsOverlay = null;
     configuration.on("change", changed => {
-        // Build new grids for a new bin, or for an overlay that the grids do not hold. Compare with the grids
-        // being built, so that a quick switch back cancels a build that is no longer wanted.
-        const overlay = configuration.get("overlay");
-        if (changed.includes("bin") || changed.includes("overlay") && overlay !== "none" && overlay !== gridsOverlay) {
-            gridsOverlay = overlay === "none" ? "velocity" : overlay;
+        // Build new grids for a new bin or overlay. A build replaces the one still running, so a quick switch
+        // back to an overlay does not show the overlay of the earlier switch.
+        if (changed.includes("bin") || changed.includes("overlay") && configuration.get("overlay") !== "none") {
             gridAgent.submit(buildGrids);
         }
     });
@@ -829,8 +825,11 @@ function init() {
 
     // When the window changes size (or a touch device turns), rebuild the globe for the new view.
     d3.select(window).on("resize", µ.debounce(() => {
-        sizeView();
-        globeAgent.submit(buildGlobe, configuration.get("projection"));
+        const {width, height} = µ.view();
+        if (width !== view.width || height !== view.height) {
+            sizeView();
+            globeAgent.submit(buildGlobe, configuration.get("projection"));
+        }
     }, RESIZE_WAIT));
 }
 

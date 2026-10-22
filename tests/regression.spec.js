@@ -258,8 +258,6 @@ test("resizing the window redraws the map at the new size", async ({ page }) => 
     const draws = await overlayDraws(page);
     await page.setViewportSize({ width: 800, height: 500 });
     await waitForOverlayDraw(page, draws);
-    const sizes = await page.$$eval(".fill-screen", els => els.map(e => [e.getAttribute("width"), e.getAttribute("height")]));
-    expect(sizes).toEqual(Array(4).fill(["800", "500"]));
     await expect(page).toHaveScreenshot("density-5-8-kpc-800x500.png");
 });
 

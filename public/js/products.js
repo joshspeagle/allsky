@@ -7,7 +7,7 @@
  * https://github.com/cambecc/earth
  */
 
-import {floorMod, isValue, loadJson, quantile, segmentedColorScale} from "./util.js";
+import {floorMod, isValue, loadJson, segmentedColorScale} from "./util.js";
 
 /**
  * The distance bins, as their names in the data paths and the URL.
@@ -230,8 +230,8 @@ function newProduct(type, attr) {
                 return Object.assign(this, buildGrid(header, i => records[0].data[i], bilinearInterpolateScalar));
             }
             const [u, v] = records.map(r => r.data);
-            const speeds = u.flatMap((x, i) => x === null ? [] : [Math.hypot(x, v[i])]);
-            const particles = {...this.particles, maxIntensity: quantile(speeds, this.particles.brightestQuantile)};
+            const speed = (x, i) => x === null ? NaN : Math.hypot(x, v[i]);  // d3.quantile skips NaN
+            const particles = {...this.particles, maxIntensity: window.d3.quantile(u, this.particles.brightestQuantile, speed)};
             return Object.assign(this, {particles},
                 buildGrid(header, i => u[i] === null ? null : [u[i], v[i]], bilinearInterpolateVector));
         }
