@@ -217,3 +217,39 @@ test("particle brightness saturates at the 95th percentile of the grid's speeds"
     });
     expect(maxIntensity).toBeCloseTo(172.6, 0);
 });
+
+test.describe("overlay switching", () => {
+    const overlayDigest = page => page.evaluate(async () => {
+        const c = document.getElementById("overlay");
+        const digest = await crypto.subtle.digest("SHA-256", c.getContext("2d").getImageData(0, 0, c.width, c.height).data);
+        return Array.from(new Uint8Array(digest)).join(",");
+    });
+
+    test("switching to an overlay and straight back shows the first overlay", async ({ page }) => {
+        await openMap(page, hashFor("5-8kpc", "velocity"));
+        const expected = await overlayDigest(page);
+        // Delay the density file, so that its build is still running after the switch back.
+        await page.route("**/density.json", async route => {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await route.continue();
+        });
+        const densitySettled = new Promise(resolve => {
+            page.on("requestfinished", request => request.url().endsWith("density.json") && resolve());
+            page.on("requestfailed", request => request.url().endsWith("density.json") && resolve());
+        });
+        await page.click("#show-menu");
+        await page.click(button.overlay("density"));
+        await page.click(button.overlay("velocity"));
+        await densitySettled;
+        await expect.poll(() => overlayDigest(page)).toBe(expected);
+    });
+
+    test("no overlay shows no colour bar", async ({ page }) => {
+        await openMap(page, hashFor("5-8kpc", "none"));
+        const painted = await page.evaluate(() => {
+            const c = document.getElementById("scale");
+            return c.getContext("2d").getImageData(0, 0, c.width, c.height).data.some(x => x !== 0);
+        });
+        expect(painted).toBe(false);
+    });
+});

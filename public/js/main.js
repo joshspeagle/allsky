@@ -608,7 +608,7 @@ function drawOverlay(signal, field, overlay) {
         drawGridPoints(ctx, grid, globeAgent.value());
     }
 
-    if (grid) {
+    if (grid && overlay !== "none") {
         // Draw color bar for reference.
         const colorBar = d3.select("#scale"), scale = grid.scale, bounds = scale.bounds;
         const c = colorBar.node(), g = c.getContext("2d"), n = c.width - 1;
@@ -753,11 +753,14 @@ function init() {
         globeAgent.submit(buildGlobe, projection);
     });
 
+    // The overlay that the current grids, or the grids being built, hold: "velocity" when they hold no scalar.
+    let gridsOverlay = null;
     configuration.on("change", changed => {
-        // Build new grids for a new bin, or for an overlay that the current grids do not hold.
-        const overlay = configuration.get("overlay"), overlayGrid = (gridAgent.value() || {}).overlayGrid;
-        if (changed.includes("bin") ||
-            changed.includes("overlay") && overlay !== "none" && (!overlayGrid || overlayGrid.type !== overlay)) {
+        // Build new grids for a new bin, or for an overlay that the grids do not hold. Compare with the grids
+        // being built, so that a quick switch back cancels a build that is no longer wanted.
+        const overlay = configuration.get("overlay");
+        if (changed.includes("bin") || changed.includes("overlay") && overlay !== "none" && overlay !== gridsOverlay) {
+            gridsOverlay = overlay === "none" ? "velocity" : overlay;
             gridAgent.submit(buildGrids);
         }
     });
