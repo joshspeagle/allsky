@@ -185,10 +185,11 @@ test("dragging the map changes the orientation in the hash", async ({ page }) =>
 
 test("wheel, double-click and drag write the expected orientations", async ({ page }) => {
     await openMap(page, hashFor("5-8", "density", "orthographic"));
-    const hashes = [];
+    const hashes = [await hashOf(page)];
     // A move ends 1 s after its last event (MOVE_END_WAIT in main.js), when the hash is written.
     const record = async () => {
-        await page.waitForTimeout(1500);
+        const previous = hashes[hashes.length - 1];
+        await expect.poll(() => hashOf(page)).not.toBe(previous);
         hashes.push(await hashOf(page));
     };
     await page.mouse.move(480, 300);
@@ -203,5 +204,5 @@ test("wheel, double-click and drag write the expected orientations", async ({ pa
     await page.mouse.move(380, 250, { steps: 8 });
     await page.mouse.up();
     await record();
-    expect(JSON.stringify(hashes, null, 1)).toMatchSnapshot("move-hashes.json");
+    expect(JSON.stringify(hashes.slice(1), null, 1)).toMatchSnapshot("move-hashes.json");
 });

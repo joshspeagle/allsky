@@ -8,6 +8,7 @@
  */
 
 import {Emitter} from "./events.js";
+import {debounce} from "./util.js";
 
 /**
  * An agent executes tasks and stores the result of the most recently completed task.
@@ -23,7 +24,7 @@ import {Emitter} from "./events.js";
 export class Agent extends Emitter {
     #value;
     #controller = new AbortController();
-    #timer;
+    #schedule = debounce((signal, task, args) => this.#run(signal, task, args), 0);
 
     /**
      * @returns {Object} this agent's current value.
@@ -45,9 +46,8 @@ export class Agent extends Emitter {
      */
     submit(task, ...args) {
         this.cancel();
-        const signal = (this.#controller = new AbortController()).signal;
-        clearTimeout(this.#timer);
-        this.#timer = setTimeout(() => this.#run(signal, task, args), 0);
+        this.#controller = new AbortController();
+        this.#schedule(this.#controller.signal, task, args);
         return this;
     }
 

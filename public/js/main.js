@@ -110,6 +110,14 @@ const overlayAgent = newAgent();   // color overlay over the animation
  * This object emits clean "moveStart" -> ("move")* -> "moveEnd" events for move operations, and "click" events
  * for normal clicks. Spurious moves emit no events.
  */
+/**
+ * @returns {Array} the position [x, y] of an event's pointer relative to the node. For a touch event, it is the
+ *          position of the first changed touch, which a touchend still has.
+ */
+function pointerOf(event, node) {
+    return d3.pointer(event.changedTouches ? event.changedTouches[0] : event, node);
+}
+
 function buildInputController() {
     let globe, op = null;
     const display = d3.select("#display");
@@ -126,16 +134,18 @@ function buildInputController() {
         };
     }
 
+    // The filter and the wheel step are d3 v3's: every button drags, and a wheel step does not depend on ctrlKey.
     const zoom = d3.zoom()
-        .duration(0)
+        .filter(() => true)
+        .wheelDelta(event => -event.deltaY * (event.deltaMode ? 120 : 1) * 0.002)
         .on("start", function(event) {
             if (event.sourceEvent && globe) {
-                op = op || newOp(d3.pointers(event, this)[0], event.transform.k);  // a new operation begins
+                op = op || newOp(pointerOf(event.sourceEvent, this), event.transform.k);  // a new operation begins
             }
         })
         .on("zoom", function(event) {
             if (!event.sourceEvent || !globe) return;
-            const currentMouse = d3.pointers(event, this)[0], currentScale = event.transform.k;
+            const currentMouse = pointerOf(event.sourceEvent, this), currentScale = event.transform.k;
             op = op || newOp(currentMouse, 1);  // Fix bug on some browsers where start fires out of order.
             if (op.type === "click" || op.type === "spurious") {
                 const distanceMoved = µ.distance(currentMouse, op.startMouse);
@@ -169,7 +179,7 @@ function buildInputController() {
 
     const signalEnd = µ.debounce(() => {
         if (!op || op.type !== "drag" && op.type !== "zoom") {
-            configuration.save({orientation: globe.orientation()}, {source: "moveEnd"});
+            configuration.save({orientation: globe.orientation()});
             dispatch.trigger("moveEnd");
         }
     }, MOVE_END_WAIT);  // wait for a bit to decide if user has stopped moving the globe
@@ -177,15 +187,13 @@ function buildInputController() {
     display.call(zoom).on("dblclick.zoom", function(event) {
         // Zoom to the next power of two (the previous with shift), as d3 v3 did.
         const k = Math.log2(d3.zoomTransform(this).k);
-        zoom.scaleTo(display, 2 ** (event.shiftKey ? Math.ceil(k) - 1 : Math.floor(k) + 1), d3.pointer(event, this), event);
+        zoom.scaleTo(display, 2 ** (event.shiftKey ? Math.ceil(k) - 1 : Math.floor(k) + 1), pointerOf(event, this), event);
     });
 
-    function reorient(value, options = {}) {
-        if (!globe || options.source === "moveEnd") {
-            // reorientation occurred because the user just finished a move operation, so globe is already
-            // oriented correctly.
-            return;
-        }
+    // Sets the globe to the orientation of the configuration. After a move this rounds the orientation to the
+    // precision of the hash, so the view always matches its URL.
+    function reorient() {
+        if (!globe) return;
         dispatch.trigger("moveStart");
         globe.orientation(configuration.get("orientation"), view);
         display.call(zoom.scaleTo, globe.projection.scale());
@@ -204,6 +212,9 @@ function buildInputController() {
 }
 
 function buildGlobe(signal, projectionName) {
+    if (!projectionNames.has(projectionName)) {
+        throw "Unknown projection: " + projectionName;
+    }
     return newGlobe(projectionName, view);
 }
 

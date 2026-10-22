@@ -68,7 +68,7 @@ function parse(hash, projectionNames, overlayTypes) {
 
 /**
  * Holds the page's configuration as a set of attributes: layer, projection, orientation, etc. A change fires
- * "change:<attribute>" with (value, options) for each changed attribute, then one "change" with the array of
+ * "change:<attribute>" with the new value for each changed attribute, then one "change" with the array of
  * changed attribute names. For example, configuration.save({projection: "orthographic"}) fires an event which
  * causes the globe to be re-rendered with an orthographic projection.
  *
@@ -98,10 +98,10 @@ export class Configuration extends Emitter {
     /**
      * Sets attributes and fires change events for those whose value changed.
      */
-    set(attrs, options = {}) {
+    set(attrs) {
         const changed = Object.keys(attrs).filter(key => this.attributes[key] !== attrs[key]);
         changed.forEach(key => { this.attributes[key] = attrs[key]; });
-        changed.forEach(key => this.trigger("change:" + key, this.attributes[key], options));
+        changed.forEach(key => this.trigger("change:" + key, this.attributes[key]));
         if (changed.length > 0) {
             this.trigger("change", changed);
         }
@@ -111,8 +111,8 @@ export class Configuration extends Emitter {
     /**
      * Sets attributes, then writes the configuration to the hash fragment.
      */
-    save(attrs, options) {
-        this.set(attrs, options);
+    save(attrs) {
+        this.set(attrs);
         // Setting the hash fires a hashchange event in a later event turn. Ignore it.
         this.#ignoreNextHashChange = true;
         window.location.hash = this.toHash();
