@@ -5,3 +5,5 @@ target
 scratch
 private
 *.iml
+test-results
+playwright-report

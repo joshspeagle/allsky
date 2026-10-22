@@ -991,7 +991,14 @@
         animatorAgent.listenTo(fieldAgent, "submit", stopCurrentAnimation.bind(null, false));
 
         overlayAgent.listenTo(fieldAgent, "update", function() {
-            overlayAgent.submit(drawOverlay, fieldAgent.value(), configuration.get("overlayType"));
+            overlayAgent.submit(function(field, overlayType) {
+                drawOverlay(field, overlayType);
+                // Count the overlays drawn for newly interpolated fields. The tests wait on this; keep it.
+                if (field) {
+                    var root = document.documentElement.dataset;
+                    root.fieldOverlays = +(root.fieldOverlays || 0) + 1;
+                }
+            }, fieldAgent.value(), configuration.get("overlayType"));
         });
         overlayAgent.listenTo(rendererAgent, "start", function() {
             overlayAgent.submit(drawOverlay, fieldAgent.value(), null);

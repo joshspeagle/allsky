@@ -15,6 +15,11 @@
     "engines": {
         "node": ">=18.0.0"
     },
+    "scripts": {
+        "start": "node dev-server.js 8080",
+        "lint": "grunt",
+        "test": "playwright test"
+    },
     "dependencies": {
         "compression": "^1.7.5",
         "express": "^5.2.1",
@@ -23,6 +28,7 @@
         "nunjucks": "^3.2.4"
     },
     "devDependencies": {
+        "@playwright/test": "1.56.1",
         "grunt": "^1.6.3",
         "grunt-contrib-jshint": "^3.2.0"
     }

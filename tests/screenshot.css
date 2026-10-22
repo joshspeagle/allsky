@@ -1,0 +1,2 @@
+/* Hide the layers that are random (the particle animation) or not part of the map (the menu and text). */
+#animation, #details { visibility: hidden !important; }

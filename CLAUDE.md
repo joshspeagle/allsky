@@ -11,6 +11,7 @@ allsky is an animated all-sky map of the Milky Way's stars. It shows the mean ta
 - `public/data/weather/current/`: the data, one JSON file per quantity and distance bin, on a 1 degree grid in Galactic longitude and latitude.
 - `public/styles/`: the stylesheet and two subset fonts.
 - `dev-server.js`: a local static server (Express) for `public/`.
+- `tests/`: the Playwright regression tests and their snapshots (`tests/snapshots/`).
 
 ### Earth names
 
@@ -39,7 +40,10 @@ The data files, the code and the URL hashes still use earth's weather names:
 
 - Set up: `npm ci`. Node 18 or later.
 - Run: `node dev-server.js 8080`, then open http://localhost:8080.
-- Lint: `npx grunt`.
+- Lint: `npm run lint`.
+- Test: `npm test`. It runs the Playwright regression tests in `tests/` against the dev server, in Chromium. Without the preinstalled browsers, run `npx playwright install chromium` once.
+- Update the test snapshots: `npx playwright test --update-snapshots`, only for an output change the lead approved. Check every changed file in `tests/snapshots/` before committing it.
+- CI (`.github/workflows/ci.yml`) runs the lint and the tests for every push to `master` and every pull request.
 
 ## Deployment
 
@@ -93,7 +97,7 @@ The data files, the code and the URL hashes still use earth's weather names:
    | 100 to 500 lines | two reviewers: reuse with simplification, efficiency with altitude | `medium` |
    | Over 500 lines | four reviewers, one per angle | `high` |
 
-4. Before ready, if every commit on the branch is by Claude, fold each fix into the commit it corrects (`git commit --fixup=<commit>`, then `GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash origin/master`) and push with `--force-with-lease`. Otherwise fixes are new commits.
+4. Before ready, if every commit on the branch is by Claude, fold each fix into the commit it corrects (`git commit --fixup=<commit>`, then `GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash origin/master`) and push with `--force-with-lease`. Otherwise, or where the environment does not allow a force-push, fixes are new commits.
 5. Mark it ready when its checklist is done. After that, fixes are new commits.
 6. Merge it with a merge commit when CI passes, no review thread is unresolved, each request to Claude has an answer and every required approval is given. Then add its decisions to the phase's decision log.
 
@@ -125,6 +129,8 @@ The data files, the code and the URL hashes still use earth's weather names:
 - Write a test only when it catches a plausible bug in this code that no other test catches.
 - Test contracts, invariants and regressions (each bug fix adds a test that fails without it). Do not test a library's behaviour.
 - Assert on values and pixels, never on wall-clock time.
+- The pixel snapshots come from Chromium on Linux, as in the CI image `mcr.microsoft.com/playwright:v1.56.1-noble`. On another platform, run the tests in that image.
+- The tests wait on `data-field-overlays` on the `<html>` element, which `earth.js` increments after it draws the overlay of a new field. A rewrite keeps this signal.
 - Name a test as a sentence that states the behaviour: `masked cells show no overlay colour`.
 
 ## Documentation
