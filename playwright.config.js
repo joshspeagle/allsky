@@ -6,6 +6,7 @@ const PORT = 8123;
 
 module.exports = defineConfig({
     testDir: "tests",
+    testMatch: "*.spec.js",
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
     reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
