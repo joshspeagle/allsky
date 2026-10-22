@@ -9,11 +9,15 @@
 
 import {floorMod, isValue, loadJson, segmentedColorScale} from "./util.js";
 
-const DATA_PATH = "data/weather";
 
-// The layers, by type. "wind" is the vector layer that drives the particles; the others are scalar overlays.
+/**
+ * The distance bins, as their names in the data paths and the URL.
+ */
+export const bins = new Set(["0-2kpc", "1-3kpc", "2-4kpc", "3-6kpc", "5-8kpc", "7-11kpc", "10-15kpc", "13-25kpc", "20-50kpc"]);
+
+// The layers, by type. "velocity" is the vector layer that drives the particles; the others are scalar overlays.
 const LAYERS = {
-    wind: {
+    velocity: {
         units: {label: "km/s", precision: 2},
         scale: {
             bounds: [0, 250],
@@ -31,7 +35,7 @@ const LAYERS = {
         },
         particles: {velocityScale: 1 / 60000, maxIntensity: 17}
     },
-    temp: {
+    density: {
         units: {label: "stars", precision: 0},
         scale: {
             bounds: [0, 32000],
@@ -59,7 +63,7 @@ const LAYERS = {
             ])
         }
     },
-    relative_humidity: {
+    metallicity: {
         units: {label: "[Fe/H]", precision: 2},
         scale: {
             bounds: [-3, 0.5],
@@ -87,7 +91,7 @@ const LAYERS = {
             ])
         }
     },
-    air_density: {
+    age: {
         units: {label: "Gyr", precision: 1},
         scale: {
             bounds: [2, 13.8],
@@ -117,18 +121,9 @@ const LAYERS = {
 };
 
 /**
- * The overlay types that a configuration may name: the layer types, and "off" for no overlay.
+ * The overlays that a configuration may name: the layer types, and "none" for no overlay.
  */
-export const overlayTypes = new Set(Object.keys(LAYERS).concat("off"));
-
-/**
- * @returns {String} the path of the file of a layer type for the configuration's date and level.
- */
-function dataPath(attr, type) {
-    const dir = attr.date, stamp = dir === "current" ? "current" : attr.hour;
-    const file = [stamp, type, attr.surface, attr.level, "gfs", "1.0"].join("-") + ".json";
-    return [DATA_PATH, dir, file].join("/");
-}
+export const overlays = new Set(Object.keys(LAYERS).concat("none"));
 
 function bilinearInterpolateScalar(x, y, g00, g10, g01, g11) {
     const rx = (1 - x);
@@ -222,7 +217,7 @@ function buildGrid(header, data, interpolateCell) {
  * interpolate and forEachPoint methods to the product. The promise resolves to null if the signal aborts.
  */
 function newProduct(type, attr) {
-    const path = dataPath(attr, type);
+    const path = `data/${attr.bin}/${type}.json`;
     return Object.assign({type, path}, LAYERS[type], {
         async load(signal) {
             const records = await loadJson(path, signal);
@@ -230,7 +225,7 @@ function newProduct(type, attr) {
                 return null;
             }
             const header = records[0].header;
-            const grid = type === "wind" ?
+            const grid = type === "velocity" ?
                 buildGrid(header, i => [records[0].data[i], records[1].data[i]], bilinearInterpolateVector) :
                 buildGrid(header, i => records[0].data[i], bilinearInterpolateScalar);
             return Object.assign(this, grid);
@@ -239,16 +234,13 @@ function newProduct(type, attr) {
 }
 
 /**
- * @returns {Array} the products that a configuration shows: the vector layer, then the overlay when it is a
- *          different layer.
+ * @returns {Array} the products that a configuration shows: the velocity layer, then the overlay when it is a
+ *          scalar layer.
  */
 export function productsFor(attr) {
-    if (attr.param !== "wind") {
-        return [];
-    }
-    const result = [newProduct("wind", attr)];
-    if (attr.overlayType in LAYERS && attr.overlayType !== "wind") {
-        result.push(newProduct(attr.overlayType, attr));
+    const result = [newProduct("velocity", attr)];
+    if (attr.overlay in LAYERS && attr.overlay !== "velocity") {
+        result.push(newProduct(attr.overlay, attr));
     }
     return result;
 }

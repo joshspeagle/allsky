@@ -9,86 +9,65 @@
 
 import {Emitter} from "./events.js";
 
-const DEFAULT_CONFIG = "current/wind/surface/level/atlantis";
+const DEFAULTS = {bin: "7-11kpc", overlay: "velocity", projection: "mollweide", orientation: "", showGrid: false};
 
 /**
- * Parses a URL hash fragment:
+ * Parses a URL hash fragment into the configuration's attributes. The hash is a list of segments separated by
+ * "/", in any order:
  *
- * example: "2013/11/14/0900Z/wind/isobaric/1000hPa/orthographic=26.50,-153.00,1430/overlay=off"
- * output: {date: "2013/11/14", hour: "0900", param: "wind", surface: "isobaric", level: "1000hPa",
- *          projection: "orthographic", orientation: "26.50,-153.00,1430", overlayType: "off"}
+ *     a distance bin            7-11kpc
+ *     an overlay                velocity, density, metallicity, age or none
+ *     a projection              mollweide, or mollweide=λ,φ,scale for an orientation
+ *     the grid points           grid
  *
- * grammar:
- *     hash   := ( "current" | yyyy / mm / dd / hhhh "Z" ) / param / surface / level [ / option [ / option ... ] ]
- *     option := type [ "=" number [ "," number [ ... ] ] ]
+ * Example: "0-2kpc/density/orthographic=26.50,-153.00,1430/grid". A missing or unknown segment takes its
+ * default value (7-11kpc/velocity/mollweide).
  *
  * @param hash the hash fragment.
- * @param projectionNames the set of allowed projections.
- * @param overlayTypes the set of allowed overlays.
- * @returns {Object} the result of the parse, or {} when the hash does not match the grammar.
+ * @param names the allowed values: {bins, overlays, projections}, each a Set.
+ * @returns {Object} the attributes.
  */
-function parse(hash, projectionNames, overlayTypes) {
-    //               1        2        3          4          5            6      7      8    9
-    const tokens = /^(current|(\d{4})\/(\d{1,2})\/(\d{1,2})\/(\d{3,4})Z)\/(\w+)\/(\w+)\/(\w+)(\/.+)?/.exec(hash);
-    if (!tokens) {
-        return {};
-    }
-    const result = {
-        date: tokens[1] === "current" ? "current" : [tokens[2], tokens[3].padStart(2, "0"), tokens[4].padStart(2, "0")].join("/"),
-        hour: tokens[5] === undefined ? "" : tokens[5].padStart(4, "0"),
-        param: tokens[6],
-        surface: tokens[7],
-        level: tokens[8],
-        projection: "orthographic",
-        orientation: "",
-        overlayType: "default",
-        showGridPoints: false
-    };
-    (tokens[9] || "").split("/").forEach(segment => {
-        let option;
-        if ((option = /^(\w+)(=([\d\-.,]*))?$/.exec(segment))) {
-            if (projectionNames.has(option[1])) {
-                result.projection = option[1];
-                result.orientation = option[3] || "";  // comma delimited string of numbers, or ""
-            }
+function parse(hash, names) {
+    const result = {...DEFAULTS};
+    hash.split("/").forEach(segment => {
+        const [name, orientation] = segment.split("=");
+        if (names.bins.has(segment)) {
+            result.bin = segment;
         }
-        else if ((option = /^overlay=(\w+)$/.exec(segment))) {
-            if (overlayTypes.has(option[1]) || option[1] === "default") {
-                result.overlayType = option[1];
-            }
+        else if (names.overlays.has(segment)) {
+            result.overlay = segment;
         }
-        else if ((option = /^grid=(\w+)$/.exec(segment))) {
-            if (option[1] === "on") {
-                result.showGridPoints = true;
-            }
+        else if (names.projections.has(name) && /^[\d\-.,]*$/.test(orientation || "")) {
+            result.projection = name;
+            result.orientation = orientation || "";  // comma delimited string of numbers, or ""
+        }
+        else if (segment === "grid") {
+            result.showGrid = true;
         }
     });
     return result;
 }
 
 /**
- * Holds the page's configuration as a set of attributes: layer, projection, orientation, etc. A change fires
- * "change:<attribute>" with the new value for each changed attribute, then one "change" with the array of
- * changed attribute names. For example, configuration.save({projection: "orthographic"}) fires an event which
- * causes the globe to be re-rendered with an orthographic projection.
+ * Holds the page's configuration as a set of attributes: bin, overlay, projection, orientation and showGrid.
+ * A change fires "change:<attribute>" with the new value for each changed attribute, then one "change" with
+ * the array of changed attribute names. For example, configuration.save({projection: "orthographic"}) fires an
+ * event which causes the globe to be re-rendered with an orthographic projection.
  *
  * All attributes are kept in a human readable form in the page's hash fragment, and vice versa. This allows
  * deep linking and back-button navigation.
  */
 export class Configuration extends Emitter {
-    #projectionNames;
-    #overlayTypes;
+    #names;
     #ignoreNextHashChange = false;
 
     /**
-     * @param projectionNames the set of allowed projections.
-     * @param overlayTypes the set of allowed overlays.
+     * @param names the allowed values: {bins, overlays, projections}, each a Set.
      */
-    constructor(projectionNames, overlayTypes) {
+    constructor(names) {
         super();
         this.attributes = {};
-        this.#projectionNames = projectionNames;
-        this.#overlayTypes = overlayTypes;
+        this.#names = names;
     }
 
     get(key) {
@@ -123,7 +102,7 @@ export class Configuration extends Emitter {
      * Reads the configuration from the hash fragment.
      */
     fetch() {
-        return this.set(parse(window.location.hash.substr(1) || DEFAULT_CONFIG, this.#projectionNames, this.#overlayTypes));
+        return this.set(parse(window.location.hash.substr(1), this.#names));
     }
 
     /**
@@ -142,10 +121,7 @@ export class Configuration extends Emitter {
      */
     toHash() {
         const attr = this.attributes;
-        const dir = attr.date === "current" ? "current" : attr.date + "/" + attr.hour + "Z";
-        const proj = [attr.projection, attr.orientation].filter(Boolean).join("=");
-        const ol = attr.overlayType === "default" ? "" : "overlay=" + attr.overlayType;
-        const grid = attr.showGridPoints ? "grid=on" : "";
-        return [dir, attr.param, attr.surface, attr.level, ol, proj, grid].filter(Boolean).join("/");
+        const projection = [attr.projection, attr.orientation].filter(Boolean).join("=");
+        return [attr.bin, attr.overlay, projection, attr.showGrid ? "grid" : ""].filter(Boolean).join("/");
     }
 }

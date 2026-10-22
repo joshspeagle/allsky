@@ -11,7 +11,7 @@ import {Agent} from "./agent.js";
 import {Configuration} from "./configuration.js";
 import {Emitter} from "./events.js";
 import {SCALE_EXTENT, newGlobe, projectionNames} from "./globes.js";
-import {overlayTypes, productsFor} from "./products.js";
+import {bins, overlays, productsFor} from "./products.js";
 import * as µ from "./util.js";
 
 const d3 = window.d3;
@@ -31,7 +31,7 @@ const PARTICLE_MULTIPLIER = 7;              // particle count scalar (completely
 const PARTICLE_REDUCTION = 0.75;            // reduce particle count to this much of normal for mobile devices
 const FRAME_RATE = 40;                      // desired milliseconds per frame
 
-const NULL_WIND_VECTOR = [NaN, NaN, null];  // singleton for undefined location outside the vector field [u, v, mag]
+const OUTSIDE_VECTOR = [NaN, NaN, null];  // singleton for undefined location outside the vector field [u, v, mag]
 const HOLE_VECTOR = [NaN, NaN, null];       // singleton that signifies a hole in the vector field
 const TRANSPARENT_BLACK = [0, 0, 0, 0];     // singleton 0 rgba
 const REMAINING = "▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫";   // glyphs for remaining progress bar
@@ -79,13 +79,13 @@ function newAgent() {
 
 // Construct the page's main internal components:
 
-const configuration = new Configuration(projectionNames, overlayTypes);  // holds the page's current configuration settings
+const configuration = new Configuration({bins, overlays, projections: projectionNames});  // the page's settings
 const inputController = buildInputController();                 // interprets drag/zoom operations
 const globeAgent = newAgent();     // the model of the globe
 const gridAgent = newAgent();      // the data grids of the current layer
 const rendererAgent = newAgent();  // the globe SVG renderer
-const fieldAgent = newAgent();     // the interpolated wind vector field
-const animatorAgent = newAgent();  // the wind animator
+const fieldAgent = newAgent();     // the interpolated velocity field
+const animatorAgent = newAgent();  // the particle animator
 const overlayAgent = newAgent();   // color overlay over the animation
 
 /**
@@ -339,12 +339,12 @@ function createMask(globe) {
 function createField(columns, bounds, mask) {
 
     /**
-     * @returns {Array} wind vector [u, v, magnitude] at the point (x, y), or [NaN, NaN, null] if wind
+     * @returns {Array} the velocity vector [u, v, magnitude] at the point (x, y), or [NaN, NaN, null] if the field
      *          is undefined at that point.
      */
     function field(x, y) {
         const column = columns[Math.round(x)];
-        return column && column[Math.round(y)] || NULL_WIND_VECTOR;
+        return column && column[Math.round(y)] || OUTSIDE_VECTOR;
     }
 
     /**
@@ -357,7 +357,7 @@ function createField(columns, bounds, mask) {
      *          the vector field has a hole (is undefined) at that point, such as at an unobserved region
      *          of the sky.
      */
-    field.isInsideBoundary = (x, y) => field(x, y) !== NULL_WIND_VECTOR;
+    field.isInsideBoundary = (x, y) => field(x, y) !== OUTSIDE_VECTOR;
 
     // Frees the massive "columns" array for GC, in case the field outlives its animation.
     field.release = () => {
@@ -383,18 +383,18 @@ function createField(columns, bounds, mask) {
 }
 
 /**
- * Calculate distortion of the wind vector caused by the shape of the projection at point (x, y). The wind
+ * Calculate distortion of the velocity vector caused by the shape of the projection at point (x, y). The
  * vector is modified in place and returned by this function.
  */
-function distort(projection, λ, φ, x, y, scale, wind) {
-    const u = wind[0] * scale;
-    const v = wind[1] * scale;
+function distort(projection, λ, φ, x, y, scale, vector) {
+    const u = vector[0] * scale;
+    const v = vector[1] * scale;
     const d = µ.distortion(projection, λ, φ, x, y);
 
     // Scale distortion vectors by u and v, then add.
-    wind[0] = d[0] * u + d[2] * v;
-    wind[1] = d[1] * u + d[3] * v;
-    return wind;
+    vector[0] = d[0] * u + d[2] * v;
+    vector[1] = d[1] * u + d[3] * v;
+    return vector;
 }
 
 function interpolateField(signal, globe, grids) {
@@ -426,15 +426,15 @@ function interpolateField(signal, globe, grids) {
                 point[0] = x; point[1] = y;
                 const coord = projection.invert(point);
                 let color = TRANSPARENT_BLACK;
-                let wind = null;
+                let vector = null;
                 if (coord) {
                     const λ = coord[0], φ = coord[1];
                     if (Number.isFinite(λ)) {
-                        wind = interpolate(λ, φ);
+                        vector = interpolate(λ, φ);
                         let scalar = null;
-                        if (wind) {
-                            wind = distort(projection, λ, φ, x, y, velocityScale, wind);
-                            scalar = wind[2];
+                        if (vector) {
+                            vector = distort(projection, λ, φ, x, y, velocityScale, vector);
+                            scalar = vector[2];
                         }
                         if (hasDistinctOverlay) {
                             scalar = overlayInterpolate(λ, φ);
@@ -444,7 +444,7 @@ function interpolateField(signal, globe, grids) {
                         }
                     }
                 }
-                column[y + 1] = column[y] = wind || HOLE_VECTOR;
+                column[y + 1] = column[y] = vector || HOLE_VECTOR;
                 mask.set(x, y, color).set(x + 1, y, color).set(x, y + 1, color).set(x + 1, y + 1, color);
             }
         }
@@ -485,7 +485,7 @@ function animate(signal, globe, field, grids) {
 
     const bounds = globe.bounds(view);
     // maxIntensity is the velocity at which particle color intensity is maximum
-    const colorStyles = µ.windIntensityColorScale(INTENSITY_SCALE_STEP, grids.primaryGrid.particles.maxIntensity);
+    const colorStyles = µ.particleColorScale(INTENSITY_SCALE_STEP, grids.primaryGrid.particles.maxIntensity);
     const buckets = colorStyles.map(() => []);
     let particleCount = Math.round(bounds.width * PARTICLE_MULTIPLIER);
     if (µ.isMobile()) {
@@ -575,7 +575,7 @@ function animate(signal, globe, field, grids) {
 }
 
 function drawGridPoints(ctx, grid, globe) {
-    if (!grid || !globe || !configuration.get("showGridPoints")) return;
+    if (!grid || !globe || !configuration.get("showGrid")) return;
 
     ctx.fillStyle = "rgba(255, 255, 255, 1)";
     // Use the clipping behavior of a projection stream to quickly draw visible points.
@@ -596,15 +596,15 @@ function drawGridPoints(ctx, grid, globe) {
     });
 }
 
-function drawOverlay(signal, field, overlayType) {
+function drawOverlay(signal, field, overlay) {
     if (!field) return;
 
     const ctx = d3.select("#overlay").node().getContext("2d"), grid = (gridAgent.value() || {}).overlayGrid;
 
     µ.clearCanvas(d3.select("#overlay").node());
     µ.clearCanvas(d3.select("#scale").node());
-    if (overlayType) {
-        if (overlayType !== "off") {
+    if (overlay) {
+        if (overlay !== "none") {
             ctx.putImageData(field.overlay, 0, 0);
         }
         drawGridPoints(ctx, grid, globeAgent.value());
@@ -662,9 +662,9 @@ function showLocationDetails(point = [], coord = []) {
     }
 
     if (field.isDefined(point[0], point[1]) && grids) {
-        const wind = grids.primaryGrid.interpolate(λ, φ);
-        if (µ.isValue(wind)) {
-            showReadout("location-wind", µ.formatVector(wind, grids.primaryGrid.units), grids.primaryGrid.units);
+        const vector = grids.primaryGrid.interpolate(λ, φ);
+        if (µ.isValue(vector)) {
+            showReadout("location-velocity", µ.formatVector(vector, grids.primaryGrid.units), grids.primaryGrid.units);
         }
         if (grids.overlayGrid !== grids.primaryGrid) {
             const value = grids.overlayGrid.interpolate(λ, φ);
@@ -682,8 +682,8 @@ function updateLocationDetails() {
 function clearLocationDetails(clearEverything) {
     d3.select("#location-coord").text("");
     d3.select("#location-close").classed("invisible", true);
-    d3.select("#location-wind").text("");
-    d3.select("#location-wind-units").text("");
+    d3.select("#location-velocity").text("");
+    d3.select("#location-velocity-units").text("");
     d3.select("#location-value").text("");
     d3.select("#location-value-units").text("");
     if (clearEverything) {
@@ -700,16 +700,16 @@ function stopCurrentAnimation(alsoClearCanvas) {
 }
 
 /**
- * Registers a click event handler for the specified DOM element which modifies the configuration to have
+ * Registers a click event handler for the DOM element matching the selector, which modifies the configuration to have
  * the attributes represented by newAttr. An event listener is also registered for configuration change events,
  * so when a change occurs the button becomes highlighted (i.e., class ".highlighted" is assigned or removed) if
  * the configuration matches the attributes for this button. The set of attributes used for the matching is taken
  * from newAttr, unless a custom set of keys is provided.
  */
-function bindButtonToConfiguration(elementId, newAttr, keys = Object.keys(newAttr)) {
-    d3.select(elementId).on("click", () => configuration.save(newAttr));
+function bindButtonToConfiguration(selector, newAttr, keys = Object.keys(newAttr)) {
+    d3.select(selector).on("click", () => configuration.save(newAttr));
     configuration.on("change", () => {
-        d3.select(elementId).classed("highlighted", keys.every(key => configuration.get(key) === newAttr[key]));
+        d3.select(selector).classed("highlighted", keys.every(key => configuration.get(key) === newAttr[key]));
     });
 }
 
@@ -758,16 +758,16 @@ function init() {
     configuration.on("change", changed => {
 
         // Build a new grid if any layer-related attributes have changed.
-        let rebuildRequired = ["date", "hour", "param", "surface", "level"].some(key => changed.includes(key));
+        let rebuildRequired = changed.includes("bin");
         // Build a new grid if the new overlay type is different from the current one.
-        const overlayType = configuration.get("overlayType");
-        if (changed.includes("overlayType") && overlayType !== "off") {
-            const grids = gridAgent.value() || {}, primary = grids.primaryGrid, overlay = grids.overlayGrid;
-            if (!overlay) {
+        const overlay = configuration.get("overlay");
+        if (changed.includes("overlay") && overlay !== "none") {
+            const overlayGrid = (gridAgent.value() || {}).overlayGrid;
+            if (!overlayGrid) {
                 // Do a rebuild if we have no overlay grid.
                 rebuildRequired = true;
             }
-            else if (overlay.type !== overlayType && !(overlayType === "default" && primary === overlay)) {
+            else if (overlayGrid.type !== overlay) {
                 // Do a rebuild if the types are different.
                 rebuildRequired = true;
             }
@@ -801,22 +801,22 @@ function init() {
     fieldAgent.on("submit", () => stopCurrentAnimation(false));
 
     fieldAgent.on("update", () => {
-        overlayAgent.submit((signal, field, overlayType) => {
-            drawOverlay(signal, field, overlayType);
+        overlayAgent.submit((signal, field, overlay) => {
+            drawOverlay(signal, field, overlay);
             // Count the overlays drawn for newly interpolated fields. The tests wait on this; keep it.
             if (field) {
                 const root = document.documentElement.dataset;
                 root.fieldOverlays = +(root.fieldOverlays || 0) + 1;
             }
-        }, fieldAgent.value(), configuration.get("overlayType"));
+        }, fieldAgent.value(), configuration.get("overlay"));
     });
     rendererAgent.on("start", () => {
         overlayAgent.submit(drawOverlay, fieldAgent.value(), null);
     });
     configuration.on("change", changed => {
         // if only overlay relevant flags have changed...
-        if (changed.includes("overlayType") || changed.includes("showGridPoints")) {
-            overlayAgent.submit(drawOverlay, fieldAgent.value(), configuration.get("overlayType"));
+        if (changed.includes("overlay") || changed.includes("showGrid")) {
+            overlayAgent.submit(drawOverlay, fieldAgent.value(), configuration.get("overlay"));
         }
     });
 
@@ -825,30 +825,18 @@ function init() {
     fieldAgent.on("update", updateLocationDetails);
     d3.select("#location-close").on("click", () => clearLocationDetails(true));
 
-    d3.select("#option-show-grid").on("click", () => {
-        configuration.save({showGridPoints: !configuration.get("showGridPoints")});
+    d3.select("#show-grid").on("click", () => {
+        configuration.save({showGrid: !configuration.get("showGrid")});
     });
-    configuration.on("change:showGridPoints", showGridPoints => {
-        d3.select("#option-show-grid").classed("highlighted", showGridPoints);
-    });
-
-    // Add handlers for all distance bin buttons.
-    d3.selectAll(".surface").each(function() {
-        const [surface, level] = this.id.split("-");
-        bindButtonToConfiguration("#" + this.id, {param: "wind", surface, level});
+    configuration.on("change:showGrid", showGrid => {
+        d3.select("#show-grid").classed("highlighted", showGrid);
     });
 
-    // Add handlers for all overlay buttons.
-    overlayTypes.forEach(type => {
-        if (type !== "wind") {
-            bindButtonToConfiguration("#overlay-" + type, {overlayType: type});
-        }
-    });
-    bindButtonToConfiguration("#overlay-wind", {param: "wind", overlayType: "default"});
-
-    // Add handlers for all projection buttons.
-    projectionNames.forEach(p => {
-        bindButtonToConfiguration("#" + p, {projection: p, orientation: ""}, ["projection"]);
+    // Add handlers for the buttons of the distance bins, overlays and projections.
+    bins.forEach(bin => bindButtonToConfiguration(`[data-bin="${bin}"]`, {bin}));
+    overlays.forEach(overlay => bindButtonToConfiguration(`[data-overlay="${overlay}"]`, {overlay}));
+    projectionNames.forEach(projection => {
+        bindButtonToConfiguration(`[data-projection="${projection}"]`, {projection, orientation: ""}, ["projection"]);
     });
 
     // When touch device changes between portrait and landscape, rebuild globe using the new view size.

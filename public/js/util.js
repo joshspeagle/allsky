@@ -148,12 +148,12 @@ function colorInterpolator(start, end) {
 /**
  * @returns {Array} of particle colors, and a method, indexFor, that maps a speed to an index on the color scale.
  */
-export function windIntensityColorScale(step, maxWind) {
+export function particleColorScale(step, maxSpeed) {
     const result = [];
     for (let j = 85; j <= 255; j += step) {
         result.push(`rgba(${j}, ${j}, ${j}, 1)`);
     }
-    result.indexFor = m => Math.floor(Math.min(m, maxWind) / maxWind * (result.length - 1));
+    result.indexFor = m => Math.floor(Math.min(m, maxSpeed) / maxSpeed * (result.length - 1));
     return result;
 }
 
@@ -205,13 +205,12 @@ export function formatScalar(value, units) {
 }
 
 /**
- * Returns a human readable string for the provided rectangular wind vector in the given units.
- * See http://mst.nerc.ac.uk/wind_vect_convs.html.
+ * Returns a human readable string for the provided rectangular vector in the given units.
  */
-export function formatVector(wind, units) {
-    const d = Math.atan2(-wind[0], -wind[1]) / τ * 360;  // calculate into-the-wind cardinal degrees
+export function formatVector(vector, units) {
+    const d = Math.atan2(-vector[0], -vector[1]) / τ * 360;  // the direction the vector comes from, in degrees
     const wd = Math.round((d + 360) % 360 / 5) * 5;  // shift [-180, 180] to [0, 360], and round to nearest 5.
-    return wd.toFixed(0) + "° @ " + formatScalar(wind[2], units);
+    return wd.toFixed(0) + "° @ " + formatScalar(vector[2], units);
 }
 
 /**
