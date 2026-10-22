@@ -31,7 +31,7 @@ const PARTICLE_MULTIPLIER = 7;              // particle count scalar (completely
 const PARTICLE_REDUCTION = 0.75;            // reduce particle count to this much of normal for mobile devices
 const FRAME_RATE = 40;                      // desired milliseconds per frame
 
-const OUTSIDE_VECTOR = [NaN, NaN, null];  // singleton for undefined location outside the vector field [u, v, mag]
+const OUTSIDE_VECTOR = [NaN, NaN, null];    // singleton for undefined location outside the vector field [u, v, mag]
 const HOLE_VECTOR = [NaN, NaN, null];       // singleton that signifies a hole in the vector field
 const TRANSPARENT_BLACK = [0, 0, 0, 0];     // singleton 0 rgba
 const REMAINING = "▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫▫";   // glyphs for remaining progress bar
@@ -221,9 +221,6 @@ function buildGlobe(signal, projectionName) {
 function buildGrids(signal) {
     report.status("Downloading...");
     const layers = productsFor(configuration.attributes);
-    if (layers.length === 0) {
-        return Promise.reject({status: 404, message: "No Data"});
-    }
     log.time("build grids");
     // Keep the loaded vector grid when only the overlay changes.
     const previous = (gridAgent.value() || {}).primaryGrid;
@@ -700,16 +697,16 @@ function stopCurrentAnimation(alsoClearCanvas) {
 }
 
 /**
- * Registers a click event handler for the DOM element matching the selector, which modifies the configuration to have
+ * Registers a click event handler for the DOM element, which modifies the configuration to have
  * the attributes represented by newAttr. An event listener is also registered for configuration change events,
  * so when a change occurs the button becomes highlighted (i.e., class ".highlighted" is assigned or removed) if
  * the configuration matches the attributes for this button. The set of attributes used for the matching is taken
  * from newAttr, unless a custom set of keys is provided.
  */
-function bindButtonToConfiguration(selector, newAttr, keys = Object.keys(newAttr)) {
-    d3.select(selector).on("click", () => configuration.save(newAttr));
+function bindButtonToConfiguration(element, newAttr, keys = Object.keys(newAttr)) {
+    d3.select(element).on("click", () => configuration.save(newAttr));
     configuration.on("change", () => {
-        d3.select(selector).classed("highlighted", keys.every(key => configuration.get(key) === newAttr[key]));
+        d3.select(element).classed("highlighted", keys.every(key => configuration.get(key) === newAttr[key]));
     });
 }
 
@@ -756,24 +753,10 @@ function init() {
     });
 
     configuration.on("change", changed => {
-
-        // Build a new grid if any layer-related attributes have changed.
-        let rebuildRequired = changed.includes("bin");
-        // Build a new grid if the new overlay type is different from the current one.
-        const overlay = configuration.get("overlay");
-        if (changed.includes("overlay") && overlay !== "none") {
-            const overlayGrid = (gridAgent.value() || {}).overlayGrid;
-            if (!overlayGrid) {
-                // Do a rebuild if we have no overlay grid.
-                rebuildRequired = true;
-            }
-            else if (overlayGrid.type !== overlay) {
-                // Do a rebuild if the types are different.
-                rebuildRequired = true;
-            }
-        }
-
-        if (rebuildRequired) {
+        // Build new grids for a new bin, or for an overlay that the current grids do not hold.
+        const overlay = configuration.get("overlay"), overlayGrid = (gridAgent.value() || {}).overlayGrid;
+        if (changed.includes("bin") ||
+            changed.includes("overlay") && overlay !== "none" && (!overlayGrid || overlayGrid.type !== overlay)) {
             gridAgent.submit(buildGrids);
         }
     });
@@ -832,11 +815,15 @@ function init() {
         d3.select("#show-grid").classed("highlighted", showGrid);
     });
 
-    // Add handlers for the buttons of the distance bins, overlays and projections.
-    bins.forEach(bin => bindButtonToConfiguration(`[data-bin="${bin}"]`, {bin}));
-    overlays.forEach(overlay => bindButtonToConfiguration(`[data-overlay="${overlay}"]`, {overlay}));
-    projectionNames.forEach(projection => {
-        bindButtonToConfiguration(`[data-projection="${projection}"]`, {projection, orientation: ""}, ["projection"]);
+    // Add handlers for the buttons of the distance bins, overlays and projections, from their data attributes.
+    d3.selectAll("[data-bin]").each(function() {
+        bindButtonToConfiguration(this, {bin: this.dataset.bin});
+    });
+    d3.selectAll("[data-overlay]").each(function() {
+        bindButtonToConfiguration(this, {overlay: this.dataset.overlay});
+    });
+    d3.selectAll("[data-projection]").each(function() {
+        bindButtonToConfiguration(this, {projection: this.dataset.projection, orientation: ""}, ["projection"]);
     });
 
     // When touch device changes between portrait and landscape, rebuild globe using the new view size.

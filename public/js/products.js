@@ -9,7 +9,6 @@
 
 import {floorMod, isValue, loadJson, segmentedColorScale} from "./util.js";
 
-
 /**
  * The distance bins, as their names in the data paths and the URL.
  */
@@ -141,7 +140,7 @@ function bilinearInterpolateVector(x, y, g00, g10, g01, g11) {
 }
 
 /**
- * Builds an interpolator for a grid in the form of JSON-ified GRIB records. Example:
+ * Builds an interpolator for a grid stored as JSON records of a header and the values. Example:
  *
  *     {
  *       "header": {"nx": 360, "ny": 181, "lo1": 0, "la1": 90, "dx": 1, "dy": 1, ...},
@@ -153,12 +152,11 @@ function bilinearInterpolateVector(x, y, g00, g10, g01, g11) {
  * @param interpolateCell function(x, y, g00, g10, g01, g11) that interpolates within one grid cell.
  */
 function buildGrid(header, data, interpolateCell) {
-    const λ0 = header.lo1, φ0 = header.la1;  // the grid's origin (e.g., 0.0E, 90.0N)
-    const Δλ = header.dx, Δφ = header.dy;    // distance between grid points (e.g., 2.5 deg lon, 2.5 deg lat)
-    const ni = header.nx, nj = header.ny;    // number of grid points W-E and N-S (e.g., 144 x 73)
+    const λ0 = header.lo1, φ0 = header.la1;  // the grid's origin in degrees (0, 90)
+    const Δλ = header.dx, Δφ = header.dy;    // distance between grid points in degrees (1, 1)
+    const ni = header.nx, nj = header.ny;    // number of grid points in longitude and latitude (360 x 181)
 
-    // Scan mode 0 assumed. Longitude increases from λ0, and latitude decreases from φ0.
-    // http://www.nco.ncep.noaa.gov/pmb/docs/grib2/grib2_table3-4.shtml
+    // Longitude increases from λ0, and latitude decreases from φ0.
     const grid = [];
     const isContinuous = Math.floor(ni * Δλ) >= 360;
     for (let j = 0, p = 0; j < nj; j++) {

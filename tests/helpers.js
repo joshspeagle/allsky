@@ -17,7 +17,7 @@ const test = base.test.extend({
 });
 
 /**
- * Returns the number of overlays the page has drawn for newly interpolated fields (see earth.js).
+ * Returns the number of overlays the page has drawn for newly interpolated fields (see main.js).
  */
 function overlayDraws(page) {
     return page.evaluate(() => +(document.documentElement.dataset.fieldOverlays || 0));
