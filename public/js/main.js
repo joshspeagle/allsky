@@ -614,10 +614,13 @@ function drawOverlay(signal, field, overlay) {
 
     if (grid && overlay !== "none") {
         // Draw color bar for reference.
-        const colorBar = d3.select("#scale"), scale = grid.scale, bounds = scale.bounds;
+        const colorBar = d3.select("#scale"), scale = grid.scale, [lo, hi] = scale.bounds;
         const c = colorBar.node(), g = c.getContext("2d"), n = c.width - 1;
+        const valueAt = scale.logarithmic ?
+            fraction => Math.expm1(µ.spread(fraction, Math.log1p(lo), Math.log1p(hi))) :
+            fraction => µ.spread(fraction, lo, hi);
         for (let i = 0; i <= n; i++) {
-            const rgb = scale.gradient(µ.spread(i / n, bounds[0], bounds[1]), 1);
+            const rgb = scale.gradient(valueAt(i / n), 1);
             g.fillStyle = "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")";
             g.fillRect(i, 0, 1, c.height);
         }
@@ -626,7 +629,7 @@ function drawOverlay(signal, field, overlay) {
         colorBar.on("mousemove", function(event) {
             const x = d3.pointer(event, this)[0];
             const pct = µ.clamp((Math.round(x) - 2) / (n - 2), 0, 1);
-            const value = µ.spread(pct, bounds[0], bounds[1]);
+            const value = valueAt(pct);
             colorBar.attr("title", µ.formatScalar(value, grid.units) + " " + grid.units.label);
         });
     }
