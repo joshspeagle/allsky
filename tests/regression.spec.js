@@ -54,8 +54,7 @@ test.describe("map pixels", () => {
 });
 
 test.describe("colour bars", () => {
-    // The bar's width depends on whether the web font had loaded at start-up, so compare its colours at fixed
-    // fractions of its width, with a tolerance of one pixel's change in colour.
+    // Compare the bar's colours at fixed fractions of its width.
     for (const overlay of ["velocity", "density", "metallicity", "age"]) {
         test(`${overlay} colour bar matches its snapshot`, async ({ page }) => {
             await openMap(page, hashFor("5-8kpc", overlay));
@@ -69,7 +68,7 @@ test.describe("colour bars", () => {
                 }
                 return samples;
             });
-            expectProfile(`scale-${overlay}.json`, profile, 6);
+            expectProfile(`scale-${overlay}.json`, profile, 1);  // Chromium builds round the gradient by up to 1 level
         });
     }
 });
@@ -155,6 +154,16 @@ test.describe("URL hash", () => {
         }
     });
 
+    test("an edited hash redraws the map after a click on the active button", async ({ page }) => {
+        await openMap(page, hashFor("5-8kpc", "density"));
+        await page.click("#show-menu");
+        await page.click(button.overlay("density"));
+        const draws = await overlayDraws(page);
+        await page.evaluate(h => { window.location.hash = h; }, hashFor("5-8kpc", "age"));
+        await waitForOverlayDraw(page, draws);
+        await expect(page.locator(button.overlay("age"))).toHaveClass(/highlighted/);
+    });
+
     test("an edited hash redraws the map", async ({ page }) => {
         await openMap(page, hashFor("5-8kpc", "density"));
         const draws = await overlayDraws(page);
@@ -196,4 +205,65 @@ test("wheel, double-click and drag write the expected orientations", async ({ pa
     await page.mouse.up();
     await record();
     expect(JSON.stringify(hashes.slice(1), null, 1)).toMatchSnapshot("move-hashes.json");
+});
+
+test("particle brightness saturates at the 95th percentile of the grid's speeds", async ({ page }) => {
+    await openMap(page, hashFor("5-8kpc", "velocity"));
+    const maxIntensity = await page.evaluate(async () => {
+        const {productsFor} = await import("./js/products.js");
+        const [velocity] = productsFor({bin: "5-8kpc", overlay: "velocity"});
+        return (await velocity.load(new AbortController().signal)).particles.maxIntensity;
+    });
+    expect(maxIntensity).toBeCloseTo(172.6, 0);
+});
+
+test.describe("overlay switching", () => {
+    const overlayDigest = page => page.evaluate(async () => {
+        const c = document.getElementById("overlay");
+        const digest = await crypto.subtle.digest("SHA-256", c.getContext("2d").getImageData(0, 0, c.width, c.height).data);
+        return Array.from(new Uint8Array(digest)).join(",");
+    });
+
+    test("switching to an overlay and straight back shows the first overlay", async ({ page }) => {
+        await openMap(page, hashFor("5-8kpc", "velocity"));
+        const expected = await overlayDigest(page);
+        // Delay the density file, so that its build is still running after the switch back.
+        await page.route("**/density.json", async route => {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await route.continue();
+        });
+        const densitySettled = new Promise(resolve => {
+            page.on("requestfinished", request => request.url().endsWith("density.json") && resolve());
+            page.on("requestfailed", request => request.url().endsWith("density.json") && resolve());
+        });
+        await page.click("#show-menu");
+        await page.click(button.overlay("density"));
+        await page.click(button.overlay("velocity"));
+        await densitySettled;
+        await expect.poll(() => overlayDigest(page)).toBe(expected);
+    });
+
+    test("no overlay shows no colour bar", async ({ page }) => {
+        await openMap(page, hashFor("5-8kpc", "none"));
+        const painted = await page.evaluate(() => {
+            const c = document.getElementById("scale");
+            return c.getContext("2d").getImageData(0, 0, c.width, c.height).data.some(x => x !== 0);
+        });
+        expect(painted).toBe(false);
+    });
+});
+
+test("resizing the window redraws the map at the new size", async ({ page }) => {
+    await openMap(page, hashFor("5-8kpc", "density"));
+    const draws = await overlayDraws(page);
+    await page.setViewportSize({ width: 800, height: 500 });
+    await waitForOverlayDraw(page, draws);
+    await expect(page).toHaveScreenshot("density-5-8-kpc-800x500.png");
+});
+
+test("the last pixel column of an odd-width view has a readout", async ({ page }) => {
+    await page.setViewportSize({ width: 961, height: 601 });
+    await openMap(page, hashFor("5-8kpc", "density", "equirectangular=-130.00,40.00,2000"));
+    const readout = await readoutAt(page, 960, 300);
+    expect(readout.coord).not.toBe("");
 });

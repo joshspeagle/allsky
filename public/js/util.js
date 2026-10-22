@@ -146,6 +146,20 @@ function colorInterpolator(start, end) {
 }
 
 /**
+ * Returns the screen step [dx, dy] of a particle for one frame, from the velocity vector [u, v] in pixels per
+ * frame. The step keeps the vector's direction, and its length is 0.4 * |v|^0.7, which compresses the wide range
+ * of speeds so that both slow and fast streams stay visible.
+ */
+export function streamStep(u, v) {
+    const length = Math.hypot(u, v);
+    if (length === 0) {
+        return [0, 0];
+    }
+    const f = 0.4 * Math.pow(length, -0.3);
+    return [f * u, f * v];
+}
+
+/**
  * @returns {Array} of particle colors, and a method, indexFor, that maps a speed to an index on the color scale.
  */
 export function particleColorScale(step, maxSpeed) {
@@ -205,12 +219,17 @@ export function formatScalar(value, units) {
 }
 
 /**
- * Returns a human readable string for the provided rectangular vector in the given units.
+ * Returns a human readable string for the velocity vector [u, v, speed] in the given units: the direction of
+ * motion, in degrees from Galactic north (+b) toward increasing ℓ and rounded to 5 degrees, and the speed. A zero
+ * vector has no direction.
  */
 export function formatVector(vector, units) {
-    const d = Math.atan2(-vector[0], -vector[1]) / τ * 360;  // the direction the vector comes from, in degrees
-    const wd = Math.round((d + 360) % 360 / 5) * 5;  // shift [-180, 180] to [0, 360], and round to nearest 5.
-    return wd.toFixed(0) + "° @ " + formatScalar(vector[2], units);
+    const speed = formatScalar(vector[2], units);
+    if (vector[2] === 0) {
+        return speed;
+    }
+    const d = Math.atan2(vector[0], vector[1]) / τ * 360;
+    return Math.round(floorMod(d, 360) / 5) * 5 % 360 + "° @ " + speed;
 }
 
 /**

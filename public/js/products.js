@@ -32,7 +32,10 @@ const LAYERS = {
                 [250, [255,255,204]]
             ])
         },
-        particles: {velocityScale: 1 / 60000, maxIntensity: 17}
+        // velocityScale * (view height) converts km/s to the screen velocity that streamStep (util.js) compresses
+        // into a particle's step. Particles are brightest at the speed that 95% of the grid's cells do not exceed
+        // (set when the grid loads).
+        particles: {velocityScale: 1 / 60000, brightestQuantile: 0.95}
     },
     density: {
         units: {label: "stars", precision: 0},
@@ -148,7 +151,8 @@ function bilinearInterpolateVector(x, y, g00, g10, g01, g11) {
  *     }
  *
  * @param header the grid's header.
- * @param data function(i) that returns the value of grid point i: a number, or [u, v] for a vector.
+ * @param data function(i) that returns the value of grid point i: a number, [u, v] for a vector, or null where
+ *        the sky is unobserved.
  * @param interpolateCell function(x, y, g00, g10, g01, g11) that interpolates within one grid cell.
  */
 function buildGrid(header, data, interpolateCell) {
@@ -223,10 +227,14 @@ function newProduct(type, attr) {
                 return null;
             }
             const header = records[0].header;
-            const grid = type === "velocity" ?
-                buildGrid(header, i => [records[0].data[i], records[1].data[i]], bilinearInterpolateVector) :
-                buildGrid(header, i => records[0].data[i], bilinearInterpolateScalar);
-            return Object.assign(this, grid);
+            if (type !== "velocity") {
+                return Object.assign(this, buildGrid(header, i => records[0].data[i], bilinearInterpolateScalar));
+            }
+            const [u, v] = records.map(r => r.data);
+            const speed = (x, i) => x === null ? NaN : Math.hypot(x, v[i]);  // d3.quantile skips NaN
+            const particles = {...this.particles, maxIntensity: window.d3.quantile(u, this.particles.brightestQuantile, speed)};
+            return Object.assign(this, {particles},
+                buildGrid(header, i => u[i] === null ? null : [u[i], v[i]], bilinearInterpolateVector));
         }
     });
 }

@@ -22,6 +22,7 @@ const MIN_SLEEP_TIME = 25;                  // amount of time a task waits befor
 const MIN_MOVE = 4;                         // slack before a drag operation beings (pixels)
 const MOVE_END_WAIT = 1000;                 // time to wait for a move operation to be considered done (millis)
 const REDRAW_WAIT = 5;                      // time to wait between redraws of the map during a move (millis)
+const RESIZE_WAIT = 250;                    // time to wait for the window to stop changing size (millis)
 
 const OVERLAY_ALPHA = Math.floor(0.75 * 255);  // overlay transparency (on scale [0, 255])
 const INTENSITY_SCALE_STEP = 10;            // step size of particle intensity color scale
@@ -222,9 +223,9 @@ function buildGrids(signal) {
     report.status("Downloading...");
     const layers = productsFor(configuration.attributes);
     log.time("build grids");
-    // Keep the loaded vector grid when only the overlay changes.
-    const previous = (gridAgent.value() || {}).primaryGrid;
-    const load = product => previous && product.path === previous.path ? previous : product.load(signal);
+    // Keep the loaded grids that the new configuration still shows.
+    const loaded = Object.values(gridAgent.value() || {});
+    const load = product => loaded.find(grid => grid.path === product.path) || product.load(signal);
     return Promise.all(layers.map(load)).then(products => {
         return {primaryGrid: products[0], overlayGrid: products[1] || products[0]};
     }).finally(() => {
@@ -442,7 +443,10 @@ function interpolateField(signal, globe, grids) {
                     }
                 }
                 column[y + 1] = column[y] = vector || HOLE_VECTOR;
-                mask.set(x, y, color).set(x + 1, y, color).set(x, y + 1, color).set(x + 1, y + 1, color);
+                mask.set(x, y, color).set(x, y + 1, color);
+                if (x < bounds.xMax) {  // the last column of an odd-width field has no second column
+                    mask.set(x + 1, y, color).set(x + 1, y + 1, color);
+                }
             }
         }
         columns[x + 1] = columns[x] = column;
@@ -455,7 +459,7 @@ function interpolateField(signal, globe, grids) {
             try {
                 if (!signal.aborted) {
                     const start = Date.now();
-                    while (x < bounds.xMax) {
+                    while (x <= bounds.xMax) {
                         interpolateColumn(x);
                         x += 2;
                         if ((Date.now() - start) > MAX_TASK_TIME) {
@@ -481,7 +485,7 @@ function animate(signal, globe, field, grids) {
     if (!globe || !field || !grids) return;
 
     const bounds = globe.bounds(view);
-    // maxIntensity is the velocity at which particle color intensity is maximum
+    // maxIntensity is the speed (km/s) at which particles are brightest
     const colorStyles = µ.particleColorScale(INTENSITY_SCALE_STEP, grids.primaryGrid.particles.maxIntensity);
     const buckets = colorStyles.map(() => []);
     let particleCount = Math.round(bounds.width * PARTICLE_MULTIPLIER);
@@ -510,8 +514,9 @@ function animate(signal, globe, field, grids) {
                 particle.age = MAX_PARTICLE_AGE;  // particle has escaped the grid, never to return...
             }
             else {
-                const xt = x + 0.4 * Math.sign(v[0]) * Math.pow(Math.abs(v[0]), 0.7);
-                const yt = y + 0.4 * Math.sign(v[1]) * Math.pow(Math.abs(v[1]), 0.7);
+                const step = µ.streamStep(v[0], v[1]);
+                const xt = x + step[0];
+                const yt = y + step[1];
                 if (field.isDefined(xt, yt)) {
                     // Path from (x,y) to (xt,yt) is visible, so add this particle to the appropriate draw bucket.
                     particle.xt = xt;
@@ -607,7 +612,7 @@ function drawOverlay(signal, field, overlay) {
         drawGridPoints(ctx, grid, globeAgent.value());
     }
 
-    if (grid) {
+    if (grid && overlay !== "none") {
         // Draw color bar for reference.
         const colorBar = d3.select("#scale"), scale = grid.scale, bounds = scale.bounds;
         const c = colorBar.node(), g = c.getContext("2d"), n = c.width - 1;
@@ -716,12 +721,7 @@ function bindButtonToConfiguration(element, newAttr, keys = Object.keys(newAttr)
 function init() {
     report.status("Initializing...");
 
-    d3.selectAll(".fill-screen").attr("width", view.width).attr("height", view.height);
-    // Adjust size of the scale canvas to fill the width of the menu to the right of the label.
-    const label = d3.select("#scale-label").node();
-    d3.select("#scale")
-        .attr("width", (d3.select("#menu").node().offsetWidth - label.offsetWidth) * 0.97)
-        .attr("height", label.offsetHeight / 2);
+    sizeView();
 
     d3.select("#show-menu").on("click", () => {
         if (µ.isEmbeddedInIFrame()) {
@@ -753,10 +753,9 @@ function init() {
     });
 
     configuration.on("change", changed => {
-        // Build new grids for a new bin, or for an overlay that the current grids do not hold.
-        const overlay = configuration.get("overlay"), overlayGrid = (gridAgent.value() || {}).overlayGrid;
-        if (changed.includes("bin") ||
-            changed.includes("overlay") && overlay !== "none" && (!overlayGrid || overlayGrid.type !== overlay)) {
+        // Build new grids for a new bin or overlay. A build replaces the one still running, so a quick switch
+        // back to an overlay does not show the overlay of the earlier switch.
+        if (changed.includes("bin") || changed.includes("overlay")) {
             gridAgent.submit(buildGrids);
         }
     });
@@ -826,12 +825,42 @@ function init() {
         bindButtonToConfiguration(this, {projection: this.dataset.projection, orientation: ""}, ["projection"]);
     });
 
-    // When touch device changes between portrait and landscape, rebuild globe using the new view size.
-    d3.select(window).on("orientationchange", () => {
-        view = µ.view();
-        globeAgent.submit(buildGlobe, configuration.get("projection"));
-    });
+    // When the window changes size (or a touch device turns), rebuild the globe for the new view.
+    d3.select(window).on("resize", µ.debounce(() => {
+        const {width, height} = µ.view();
+        if (width !== view.width || height !== view.height) {
+            stopCurrentAnimation(true);
+            sizeView();
+            globeAgent.submit(buildGlobe, configuration.get("projection"));
+        }
+    }, RESIZE_WAIT));
+}
+
+/**
+ * Sizes the canvases and the SVG elements to the window, and the colour bar to the menu.
+ */
+function sizeView() {
+    view = µ.view();
+    d3.selectAll(".fill-screen").attr("width", view.width).attr("height", view.height);
+    sizeColorBar();
+}
+
+/**
+ * Sizes the colour bar to fill the width of the menu to the right of its label, which depends on the web font.
+ */
+function sizeColorBar() {
+    const label = d3.select("#scale-label").node();
+    const bar = d3.select("#scale").style("display", "none");  // the menu fits its content: measure it without the bar
+    const menuWidth = d3.select("#menu").node().offsetWidth;
+    bar.style("display", null)
+        .attr("width", (menuWidth - label.offsetWidth) * 0.97)
+        .attr("height", label.offsetHeight / 2);
 }
 
 // Once everything is set up, load the configuration from the hash fragment, which starts the change events.
+// When the web font has loaded, size the colour bar again and redraw it.
 Promise.resolve().then(init).then(() => configuration.fetch()).catch(report.error);
+document.fonts.load("1em mplus-2p-light-sub").then(() => {
+    sizeColorBar();
+    overlayAgent.submit(drawOverlay, fieldAgent.value(), configuration.get("overlay"));
+});

@@ -18,7 +18,7 @@
     "scripts": {
         "start": "node dev-server.js 8080",
         "lint": "eslint .",
-        "test": "playwright test"
+        "test": "node --test \"tests/unit/*.test.mjs\" && playwright test"
     },
     "dependencies": {
         "compression": "^1.8.2",
