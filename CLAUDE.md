@@ -29,9 +29,9 @@ The hash holds the view as segments separated by `/`, in any order: a distance b
 
 ## Deployment
 
-- The site is a static copy of `public/` in the S3 bucket behind http://allsky.s3-website.us-east-2.amazonaws.com/. The lead uploads it by hand. Claude has no access to it.
-- S3 serves files as they are stored: no compression and no server logic. Every path the page loads must work from a plain static host at the site root.
-- A merge to `master` does not change the live site. A pull request that changes what the site loads says so, so the lead knows to upload it.
+- The site is https://joshspeagle.com/allsky/, served by GitHub Pages. The `deploy` job in `ci.yml` publishes `public/` after the tests pass on a push to `master`, so a merge changes the live site.
+- Pages serves files as they are stored: no server logic. The site lives under `/allsky/`.
+- A pull request that changes what the site loads says so under Deployment.
 
 ## Plan
 
@@ -39,7 +39,7 @@ The hash holds the view as segments separated by `/`, in any order: a distance b
 - Priorities: correctness, then a clear and lean code base, then load time and frame rate. Never trade the first for the others.
 - Work larger than one pull request runs as a phase. A phase has a tracking issue from `.github/ISSUE_TEMPLATE/phase.md` and a decision log. It ends with a report on that issue: what changed, the test status, the output changes, and the pull requests to inspect.
 - An output change alters what a viewer sees or reads for the same data and view: a colour, a particle path or speed, a readout, a masked region, or the meaning of a URL. When a requested change or a fix would make one, ask the lead and record it as a decision. Never choose silently.
-- The lead must approve before any tag or release, and before any change to the deployed site.
+- The lead must approve before any tag or release, and before any change to how the site is deployed.
 
 ## GitHub
 
