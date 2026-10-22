@@ -146,6 +146,20 @@ function colorInterpolator(start, end) {
 }
 
 /**
+ * Returns the screen step [dx, dy] of a particle for one frame, from the velocity vector [u, v] in pixels per
+ * frame. The step keeps the vector's direction, and its length is 0.4 * |v|^0.7, which compresses the wide range
+ * of speeds so that both slow and fast streams stay visible.
+ */
+export function streamStep(u, v) {
+    const length = Math.hypot(u, v);
+    if (length === 0) {
+        return [0, 0];
+    }
+    const f = 0.4 * Math.pow(length, -0.3);
+    return [f * u, f * v];
+}
+
+/**
  * @returns {Array} of particle colors, and a method, indexFor, that maps a speed to an index on the color scale.
  */
 export function particleColorScale(step, maxSpeed) {

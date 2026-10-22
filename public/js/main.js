@@ -510,8 +510,9 @@ function animate(signal, globe, field, grids) {
                 particle.age = MAX_PARTICLE_AGE;  // particle has escaped the grid, never to return...
             }
             else {
-                const xt = x + 0.4 * Math.sign(v[0]) * Math.pow(Math.abs(v[0]), 0.7);
-                const yt = y + 0.4 * Math.sign(v[1]) * Math.pow(Math.abs(v[1]), 0.7);
+                const step = µ.streamStep(v[0], v[1]);
+                const xt = x + step[0];
+                const yt = y + step[1];
                 if (field.isDefined(xt, yt)) {
                     // Path from (x,y) to (xt,yt) is visible, so add this particle to the appropriate draw bucket.
                     particle.xt = xt;
