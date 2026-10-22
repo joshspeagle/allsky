@@ -30,7 +30,7 @@ The hash holds the view as segments separated by `/`, in any order: a distance b
 ## Deployment
 
 - The site is https://joshspeagle.com/allsky/, served by GitHub Pages. The `deploy` job in `ci.yml` publishes `public/` after the tests pass on a push to `master`, so a merge changes the live site.
-- Pages serves files as they are stored: no server logic. The site lives under `/allsky/`, so every path the page loads must be relative.
+- Pages serves files as they are stored: no server logic. The site lives under `/allsky/`.
 - A pull request that changes what the site loads says so under Deployment.
 
 ## Plan
