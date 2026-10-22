@@ -148,7 +148,8 @@ function bilinearInterpolateVector(x, y, g00, g10, g01, g11) {
  *     }
  *
  * @param header the grid's header.
- * @param data function(i) that returns the value of grid point i: a number, or [u, v] for a vector.
+ * @param data function(i) that returns the value of grid point i: a number, [u, v] for a vector, or null where
+ *        the sky is unobserved.
  * @param interpolateCell function(x, y, g00, g10, g01, g11) that interpolates within one grid cell.
  */
 function buildGrid(header, data, interpolateCell) {
@@ -224,7 +225,8 @@ function newProduct(type, attr) {
             }
             const header = records[0].header;
             const grid = type === "velocity" ?
-                buildGrid(header, i => [records[0].data[i], records[1].data[i]], bilinearInterpolateVector) :
+                buildGrid(header, i => records[0].data[i] === null ? null : [records[0].data[i], records[1].data[i]],
+                    bilinearInterpolateVector) :
                 buildGrid(header, i => records[0].data[i], bilinearInterpolateScalar);
             return Object.assign(this, grid);
         }
