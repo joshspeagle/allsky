@@ -92,9 +92,12 @@ export class Configuration extends Emitter {
      */
     save(attrs) {
         this.set(attrs);
-        // Setting the hash fires a hashchange event in a later event turn. Ignore it.
-        this.#ignoreNextHashChange = true;
-        window.location.hash = this.toHash();
+        const hash = this.toHash();
+        if (window.location.hash.substr(1) !== hash) {
+            // Setting a new hash fires a hashchange event in a later event turn. Ignore it.
+            this.#ignoreNextHashChange = true;
+            window.location.hash = hash;
+        }
         return this;
     }
 

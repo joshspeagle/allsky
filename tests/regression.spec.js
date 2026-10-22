@@ -155,6 +155,16 @@ test.describe("URL hash", () => {
         }
     });
 
+    test("an edited hash redraws the map after a click on the active button", async ({ page }) => {
+        await openMap(page, hashFor("5-8kpc", "density"));
+        await page.click("#show-menu");
+        await page.click(button.overlay("density"));
+        const draws = await overlayDraws(page);
+        await page.evaluate(h => { window.location.hash = h; }, hashFor("5-8kpc", "age"));
+        await waitForOverlayDraw(page, draws);
+        await expect(page.locator(button.overlay("age"))).toHaveClass(/highlighted/);
+    });
+
     test("an edited hash redraws the map", async ({ page }) => {
         await openMap(page, hashFor("5-8kpc", "density"));
         const draws = await overlayDraws(page);
